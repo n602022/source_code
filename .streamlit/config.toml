@@ -1,0 +1,11 @@
+# Ghim theme gốc của Streamlit = sáng để KHÔNG chạy theo chế độ tối của hệ điều hành.
+# Giao diện Sáng / Tối / Theo hệ thống của SafeGuard do ui_theme.py điều khiển.
+[theme]
+base = "light"
+primaryColor = "#3157D5"
+backgroundColor = "#F4F6FA"
+secondaryBackgroundColor = "#EDF1F7"
+textColor = "#172033"
+
+[client]
+toolbarMode = "viewer"

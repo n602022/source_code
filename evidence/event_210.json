@@ -1,0 +1,1 @@
+{"event_id": 210, "worker_id": "CN #03", "camera": "Video tải lên (sample_4_no_hardhat_mask.mp4)", "frame_idx": 125, "video_sec": 5.2, "confidence": 0.64, "violation_type": "NO-Hardhat", "env_status": "Ánh sáng và độ nét ổn định", "auto_triaged": false}

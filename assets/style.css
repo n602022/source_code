@@ -1,0 +1,978 @@
+/* ==========================================================================
+   SAFEGUARD AI V2 — Enterprise Stylesheet (Ported & Refined from preview.html V2)
+   Supports Light, Dark, and System themes via CSS Custom Properties
+   Fixes button contrast, popover/download button theming, badge wrapping & layout
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --bg: #F4F6FA;
+    --surface: #FFFFFF;
+    --surface2: #EDF1F7;
+    --border: #DCE3ED;
+    --text: #172033;
+    --muted: #617086;
+    --primary: #3157D5;
+    --primary-hover: #2445B5;
+    --primary-contrast: #FFFFFF;
+    --danger: #D64545;
+    --danger-bg: #FEE5E5;
+    --danger-text: #A62F35;
+    --warning: #B9770E;
+    --warning-bg: #FFF2D3;
+    --warning-text: #875500;
+    --success: #16856B;
+    --success-bg: #DDF7EB;
+    --success-text: #08765E;
+    --info: #3574C5;
+    --rejected-bg: #E9EDF3;
+    --rejected-text: #5F6C80;
+    --shadow: 0 5px 20px rgba(22, 38, 65, 0.055);
+    --radius: 12px;
+}
+
+/* Global Streamlit container overrides */
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"] {
+    background-color: var(--bg) !important;
+    color: var(--text) !important;
+    font-family: "Be Vietnam Pro", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+header[data-testid="stHeader"] {
+    background: transparent !important;
+    height: 2.2rem !important;
+}
+
+.block-container {
+    padding-top: 2.3rem !important;
+    padding-bottom: 2.4rem !important;
+    max-width: 1720px !important;
+    padding-left: 2.2rem !important;
+    padding-right: 2.2rem !important;
+}
+
+/* ==========================================================================
+   MAIN WORKSPACE BUTTONS, DOWNLOAD BUTTONS, POPOVERS & INPUT CONTROLS
+   Overrides Streamlit internal dark/coral defaults for crisp Light & Dark contrast
+   ========================================================================== */
+
+/* 1. Secondary Buttons, Download Buttons, Popover Trigger Buttons */
+section[data-testid="stMain"] div.stButton > button[kind="secondary"],
+section[data-testid="stMain"] div.stDownloadButton > button,
+section[data-testid="stMain"] button[data-testid="stBaseButton-secondary"],
+section[data-testid="stMain"] button[data-testid="stBaseButton-secondaryFormSubmit"],
+section[data-testid="stMain"] div[data-testid="stPopover"] > div > button,
+section[data-testid="stMain"] button[data-testid="stPopoverButton"] {
+    background-color: var(--surface) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 12.5px !important;
+    min-height: 38px !important;
+    padding: 0.42rem 0.75rem !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+}
+
+section[data-testid="stMain"] div.stButton > button[kind="secondary"] p,
+section[data-testid="stMain"] div.stButton > button[kind="secondary"] span,
+section[data-testid="stMain"] div.stButton > button[kind="secondary"] div,
+section[data-testid="stMain"] div.stDownloadButton > button p,
+section[data-testid="stMain"] div.stDownloadButton > button span,
+section[data-testid="stMain"] div.stDownloadButton > button div,
+section[data-testid="stMain"] button[data-testid="stBaseButton-secondary"] *,
+section[data-testid="stMain"] div[data-testid="stPopover"] > div > button *,
+section[data-testid="stMain"] button[data-testid="stPopoverButton"] * {
+    color: var(--text) !important;
+    fill: currentColor !important;
+    font-weight: 600 !important;
+}
+
+section[data-testid="stMain"] div.stButton > button[kind="secondary"]:hover,
+section[data-testid="stMain"] div.stDownloadButton > button:hover,
+section[data-testid="stMain"] button[data-testid="stBaseButton-secondary"]:hover,
+section[data-testid="stMain"] div[data-testid="stPopover"] > div > button:hover,
+section[data-testid="stMain"] button[data-testid="stPopoverButton"]:hover {
+    background-color: var(--surface2) !important;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+}
+
+section[data-testid="stMain"] div.stButton > button[kind="secondary"]:hover p,
+section[data-testid="stMain"] div.stButton > button[kind="secondary"]:hover span,
+section[data-testid="stMain"] div.stDownloadButton > button:hover p,
+section[data-testid="stMain"] div.stDownloadButton > button:hover span,
+section[data-testid="stMain"] div[data-testid="stPopover"] > div > button:hover * {
+    color: var(--primary) !important;
+}
+
+/* 2. Primary Buttons (Cobalt Blue instead of Streamlit Coral Red) */
+section[data-testid="stMain"] div.stButton > button[kind="primary"],
+section[data-testid="stMain"] div.stDownloadButton > button[kind="primary"],
+section[data-testid="stMain"] button[data-testid="stBaseButton-primary"],
+section[data-testid="stMain"] button[data-testid="stBaseButton-primaryFormSubmit"],
+div[data-testid="stPopoverBody"] div.stButton > button[kind="primary"],
+div[data-testid="stPopoverBody"] button[data-testid="stBaseButton-primary"] {
+    background-color: var(--primary) !important;
+    color: var(--primary-contrast) !important;
+    border: 1px solid var(--primary) !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    font-size: 12.5px !important;
+    min-height: 38px !important;
+    padding: 0.42rem 0.8rem !important;
+    box-shadow: 0 2px 6px rgba(49, 87, 213, 0.22) !important;
+    transition: background-color 0.15s ease, border-color 0.15s ease !important;
+}
+
+section[data-testid="stMain"] div.stButton > button[kind="primary"] p,
+section[data-testid="stMain"] div.stButton > button[kind="primary"] span,
+section[data-testid="stMain"] div.stButton > button[kind="primary"] div,
+section[data-testid="stMain"] div.stDownloadButton > button[kind="primary"] *,
+section[data-testid="stMain"] button[data-testid="stBaseButton-primary"] *,
+section[data-testid="stMain"] button[data-testid="stBaseButton-primaryFormSubmit"] *,
+div[data-testid="stPopoverBody"] div.stButton > button[kind="primary"] * {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+section[data-testid="stMain"] div.stButton > button[kind="primary"]:hover,
+section[data-testid="stMain"] div.stDownloadButton > button[kind="primary"]:hover,
+section[data-testid="stMain"] button[data-testid="stBaseButton-primary"]:hover,
+section[data-testid="stMain"] button[data-testid="stBaseButton-primaryFormSubmit"]:hover {
+    background-color: var(--primary-hover) !important;
+    border-color: var(--primary-hover) !important;
+    color: #FFFFFF !important;
+}
+
+/* 3. Popover Dropdown Body, Selectboxes, Text Inputs & Expanders */
+div[data-testid="stPopoverBody"],
+div[data-baseweb="popover"] > div {
+    background-color: var(--surface) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 12px 32px rgba(12, 24, 44, 0.16) !important;
+}
+
+div[data-testid="stPopoverBody"] p,
+div[data-testid="stPopoverBody"] span,
+div[data-testid="stPopoverBody"] div,
+div[data-testid="stPopoverBody"] small {
+    color: var(--text) !important;
+}
+
+section[data-testid="stMain"] div[data-baseweb="select"] > div,
+section[data-testid="stMain"] div[data-baseweb="input"] > div,
+section[data-testid="stMain"] div[data-baseweb="base-input"] {
+    background-color: var(--surface) !important;
+    color: var(--text) !important;
+    border-color: var(--border) !important;
+    border-radius: 8px !important;
+}
+
+section[data-testid="stMain"] input {
+    color: var(--text) !important;
+}
+
+section[data-testid="stMain"] label,
+section[data-testid="stMain"] [data-testid="stWidgetLabel"] p {
+    color: var(--text) !important;
+    font-weight: 600 !important;
+}
+
+section[data-testid="stMain"] [data-testid="stCaptionContainer"] p {
+    color: var(--muted) !important;
+}
+
+/* Bordered st.container(border=True) panels */
+section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow) !important;
+    padding: 16px 18px !important;
+}
+
+section[data-testid="stMain"] details[data-testid="stExpander"] {
+    background-color: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 10px !important;
+    overflow: hidden;
+}
+
+section[data-testid="stMain"] details[data-testid="stExpander"] summary {
+    background-color: var(--surface) !important;
+    color: var(--text) !important;
+    font-weight: 700 !important;
+}
+
+/* ==========================================================================
+   SIDEBAR STYLING (Navy #111D30 per Prototype V2)
+   ========================================================================== */
+section[data-testid="stSidebar"] {
+    background-color: #111D30 !important;
+    border-right: 1px solid #293950 !important;
+    min-width: 248px !important;
+}
+
+section[data-testid="stSidebar"] > div {
+    background-color: #111D30 !important;
+    color: #D9E3F2 !important;
+}
+
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] div {
+    color: #D9E3F2;
+}
+
+section[data-testid="stSidebar"] hr {
+    border-color: #293950 !important;
+    margin: 0.95rem 0 !important;
+}
+
+.sg-brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 2px 4px 18px;
+    border-bottom: 1px solid #293950;
+    margin-bottom: 16px;
+}
+
+.sg-logo {
+    width: 39px;
+    height: 39px;
+    border-radius: 11px;
+    background: #203A66;
+    border: 1px solid #34527D;
+    display: grid;
+    place-items: center;
+    color: #A9BBFF;
+    flex-shrink: 0;
+}
+
+.sg-logo svg {
+    width: 22px;
+    height: 22px;
+    stroke: #A9BBFF;
+    stroke-width: 1.7;
+    fill: none;
+}
+
+.sg-brand-title {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    color: #F3F6FC !important;
+    line-height: 1.2;
+}
+
+.sg-brand-sub {
+    display: block;
+    color: #9BAEC7 !important;
+    font-size: 11px;
+    margin-top: 3px;
+}
+
+.sg-side-label {
+    color: #8EA2BE !important;
+    letter-spacing: 0.14em;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    margin: 10px 4px 7px;
+}
+
+/* Sidebar Buttons */
+section[data-testid="stSidebar"] div.stButton > button {
+    width: 100%;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    background-color: #16243B !important;
+    color: #C2CEE0 !important;
+    padding: 0.56rem 0.85rem !important;
+    border-radius: 9px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    min-height: 40px !important;
+    transition: all 0.15s ease !important;
+}
+
+section[data-testid="stSidebar"] div.stButton > button p,
+section[data-testid="stSidebar"] div.stButton > button span {
+    color: #C2CEE0 !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+}
+
+section[data-testid="stSidebar"] div.stButton > button:hover {
+    background-color: #1D3150 !important;
+    border-color: #4B6A9B !important;
+    color: #FFFFFF !important;
+}
+
+section[data-testid="stSidebar"] div.stButton > button:hover p,
+section[data-testid="stSidebar"] div.stButton > button:hover span {
+    color: #FFFFFF !important;
+}
+
+section[data-testid="stSidebar"] div.stButton > button[kind="primary"],
+section[data-testid="stSidebar"] button[data-testid="stBaseButton-primary"] {
+    background-color: #183966 !important;
+    color: #FFFFFF !important;
+    border: 1px solid #7895FF !important;
+    box-shadow: inset 3px 0 0 #7895FF !important;
+    font-weight: 700 !important;
+}
+
+section[data-testid="stSidebar"] div.stButton > button[kind="primary"] p,
+section[data-testid="stSidebar"] div.stButton > button[kind="primary"] span,
+section[data-testid="stSidebar"] button[data-testid="stBaseButton-primary"] * {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+.sg-status-mini {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #D9E3F2 !important;
+    font-size: 11.5px;
+    padding: 8px 10px;
+    background: rgba(24, 57, 102, 0.38);
+    border: 1px solid #293950;
+    border-radius: 8px;
+    margin-top: 6px;
+}
+
+.sg-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #45D6A5;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.sg-dot-danger {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #EF4444;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   HEADER, TOPBAR & KPI CARDS
+   ========================================================================== */
+.sg-utility-brand strong {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--primary);
+    font-weight: 800;
+    margin-bottom: 2px;
+}
+
+.sg-utility-brand span {
+    font-size: 11.5px;
+    color: var(--muted);
+}
+
+.sg-utility-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 0 16px 0;
+}
+
+.sg-topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.sg-eyebrow {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--primary);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.sg-topbar h1 {
+    font-size: 26px;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+    margin: 0 0 5px 0;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.sg-sub {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.sg-top-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+    color: var(--success);
+    background: var(--success-bg);
+    border: 1px solid color-mix(in srgb, var(--success) 30%, var(--border));
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.sg-top-status.danger {
+    color: var(--danger-text);
+    background: var(--danger-bg);
+    border-color: var(--danger);
+}
+
+/* Panels & Cards */
+.sg-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    margin-bottom: 14px;
+}
+
+.sg-panel-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+}
+
+.sg-panel-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 12px;
+}
+
+/* Metric KPI Row */
+.sg-kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--primary);
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+    margin-top: 6px;
+    margin-bottom: 16px;
+    min-height: 104px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.sg-kpi-label {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.sg-kpi-val {
+    font-size: 25px;
+    font-weight: 800;
+    color: var(--text);
+    margin: 4px 0 2px;
+    line-height: 1.15;
+}
+
+.sg-kpi-sub {
+    font-size: 11px;
+    color: var(--muted);
+}
+
+/* Dashboard Hero & Timeline / Sparkline */
+.sg-overview-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.sg-hero-number {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--text);
+    margin-top: 6px;
+}
+
+.sg-delta {
+    font-size: 11.5px;
+    color: var(--success);
+    font-weight: 700;
+    margin-top: 3px;
+}
+
+.sg-spark {
+    width: 100%;
+    height: 150px;
+    display: block;
+    margin-top: 8px;
+}
+
+/* Event Timeline when fewer than 3 time points exist */
+.sg-timeline-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-top: 8px;
+}
+
+.sg-timeline-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+}
+
+.sg-timeline-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: 8px;
+    margin-top: 7px;
+    font-size: 11.5px;
+}
+
+.sg-timeline-row:first-of-type {
+    margin-top: 0;
+}
+
+.sg-timeline-time {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--primary);
+    white-space: nowrap;
+}
+
+/* Behavior horizontal bars */
+.sg-bar-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) 28px 1fr;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0;
+    font-size: 12px;
+    color: var(--text);
+}
+
+.sg-track {
+    height: 7px;
+    border-radius: 10px;
+    background: var(--surface2);
+    overflow: hidden;
+}
+
+.sg-fill {
+    height: 100%;
+    border-radius: 10px;
+}
+
+/* Safety Score Ring Panel */
+.sg-score-panel {
+    background: linear-gradient(125deg, #102C4C, #14243A);
+    border: 1px solid #284566;
+    color: #F5F8FF;
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    display: grid;
+    grid-template-columns: 152px 1fr;
+    gap: 20px;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.sg-score-ring {
+    width: 128px;
+    height: 128px;
+    border-radius: 50%;
+    background: conic-gradient(#45D6A5 0 68%, #385B9B 68% 88%, #F7A51A 88% 100%);
+    display: grid;
+    place-items: center;
+    margin: auto;
+    position: relative;
+}
+
+.sg-score-ring::before {
+    content: "";
+    position: absolute;
+    inset: 13px;
+    border-radius: 50%;
+    background: #14243A;
+}
+
+.sg-score-ring-inner {
+    position: relative;
+    text-align: center;
+    color: #FFFFFF;
+}
+
+.sg-score-ring-inner strong {
+    font-size: 27px;
+    display: block;
+    line-height: 1.1;
+}
+
+.sg-score-ring-inner small {
+    font-size: 10px;
+    color: #C1CCE0;
+}
+
+.sg-score-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 16px;
+    margin-top: 10px;
+}
+
+.sg-score-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: #D6E2F2;
+    font-size: 11px;
+    padding: 7px 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.sg-score-item b {
+    color: #FFFFFF;
+    white-space: nowrap;
+}
+
+.sg-score-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+/* Badges — strictly non-wrapping */
+.sg-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    line-height: 1.3;
+}
+
+.sg-badge.high {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+}
+
+.sg-badge.medium {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+}
+
+.sg-badge.low {
+    background: #D9F4F2;
+    color: #147A77;
+}
+
+.sg-badge.confirmed {
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+
+.sg-badge.pending {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+}
+
+.sg-badge.false_positive,
+.sg-badge.rejected {
+    background: var(--rejected-bg);
+    color: var(--rejected-text);
+}
+
+/* Incident / Evidence Cards */
+.sg-incident-card {
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    margin-bottom: 8px;
+    transition: border-color 0.15s ease;
+}
+
+.sg-incident-card.selected {
+    border: 2px solid var(--primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.sg-incident-card img {
+    width: 100%;
+    height: 136px;
+    object-fit: cover;
+    display: block;
+    background: var(--surface2);
+}
+
+.sg-incident-body {
+    padding: 10px 12px;
+}
+
+.sg-incident-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.sg-incident-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.35;
+    margin: 4px 0;
+    min-height: 32px;
+}
+
+.sg-incident-meta {
+    font-size: 10.5px;
+    color: var(--muted);
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Camera Status Row in Dashboard */
+.sg-cam-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text);
+}
+
+.sg-cam-status-row:last-child {
+    border-bottom: none;
+    padding-bottom: 2px;
+}
+
+/* Telemetry Items (Scanner Page) */
+.sg-telemetry-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+    margin-bottom: 12px;
+}
+
+.sg-telemetry-item {
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface2);
+    padding: 10px 12px;
+}
+
+.sg-telemetry-item span {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.sg-telemetry-item strong {
+    display: block;
+    font-size: 12.5px;
+    color: var(--text);
+    margin-top: 4px;
+}
+
+/* Threshold Note Box */
+.sg-threshold-note {
+    padding: 12px 14px;
+    border-radius: 9px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-size: 11.5px;
+    margin: 12px 0;
+    color: var(--text);
+}
+
+.sg-threshold-note b {
+    font-size: 11px;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.sg-threshold-note p {
+    margin: 6px 0;
+    font-weight: 600;
+}
+
+.sg-threshold-note small {
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.45;
+    display: block;
+}
+
+/* Review Detail Panel */
+.sg-detail-list {
+    display: grid;
+    grid-template-columns: minmax(110px, 0.85fr) minmax(0, 1.25fr);
+    gap: 8px 12px;
+    margin: 12px 0;
+    font-size: 12px;
+    padding: 12px;
+    background: var(--surface2);
+    border-radius: 9px;
+    border: 1px solid var(--border);
+}
+
+.sg-detail-list .sg-label {
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.sg-detail-list b {
+    text-align: right;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+
+.sg-confidence-track {
+    height: 7px;
+    background: var(--surface2);
+    border-radius: 99px;
+    overflow: hidden;
+    margin: 8px 0 12px;
+    border: 1px solid var(--border);
+}
+
+.sg-confidence-track span {
+    height: 100%;
+    display: block;
+    background: var(--primary);
+    border-radius: 99px;
+}
+
+.sg-guide-box {
+    background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+    border-left: 4px solid var(--primary);
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 12px;
+    color: var(--text);
+    margin: 10px 0 14px;
+    line-height: 1.5;
+}
+
+/* Assistant Chat Bubbles */
+.sg-chat-intro {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.sg-chat-mark {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    color: var(--primary);
+    background: var(--surface2);
+    flex-shrink: 0;
+}
+
+.sg-bubble-user {
+    max-width: 85%;
+    margin-left: auto;
+    background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+    color: var(--text);
+    border-radius: 13px 13px 3px 13px;
+    padding: 11px 15px;
+    margin: 8px 0 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.sg-bubble-ai {
+    max-width: 95%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--primary);
+    color: var(--text);
+    border-radius: 3px 13px 13px 13px;
+    padding: 13px 16px;
+    line-height: 1.65;
+    margin: 4px 0 16px;
+    font-size: 12.5px;
+}
+
+.sg-footer-note {
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 24px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
