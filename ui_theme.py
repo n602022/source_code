@@ -10,7 +10,12 @@ TỐI ƯU HÓA TỐC ĐỘ CHUYỂN TRANG & ĐỒNG BỘ GIAO DIỆN TOÀN HỆ 
   gọn đẹp ở góc dưới bên phải mỗi thẻ trên trang Duyệt vi phạm.
 - Cân chỉnh khung hồ sơ "Minh An / Giám sát viên" (`.st-key-util_user button`): tăng gấp đôi khoảng cách giữa
   vòng tròn avatar `MA` và chữ "Minh An / Giám sát viên" (`padding-left: 56px`), giữ độ dài tổng thể hài hòa (`184px`).
-- Sửa triệt để các lỗi hiển thị ở chế độ Tối (Dark Mode) trên trang Trợ lý AI và trang Tài liệu an toàn.
+- Tái cấu trúc trang Quét AI & Camera (`panel_scan_center` ở trên + `panel_scan_sources` trải ngang ở dưới,
+  ngang hàng với khung `Hành vi giám sát` bên phải), triệt tiêu khoảng trống lớn bên dưới màn hình video.
+- Tinh chỉnh trang Trợ lý AI (`assistant_workspace_row`): 2 khung lớn (`panel_assistant` bên trái và
+  `panel_assistant_context` bên phải) luôn cao bằng nhau 100%, đồng thời tạo khoảng đệm dưới thoáng đãng
+  (`padding-bottom: 24px`) dưới 2 ô "Đã xác nhận" / "Đã loại bỏ".
+- Căn giữa hoàn hảo theo trục dọc cho chữ trong 6 thẻ lọc chủ đề trên trang Tài liệu an toàn (`.st-key-doc_topic_row button`).
 """
 import re
 from pathlib import Path
@@ -208,6 +213,78 @@ OVERRIDE_CSS = """
     color: var(--primary-hover) !important;
 }
 
+/* Cụm Segmented Pill cho nhóm Thời gian (Dashboard) & nhóm Trạng thái (Duyệt vi phạm) */
+[data-testid="stMain"] :is(.st-key-dash_range_group, .st-key-rev_tab_group) {
+    background: var(--surface) !important;
+    border: 1px solid var(--border-strong) !important;
+    border-radius: 10px !important;
+    padding: 3px 4px !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+[data-testid="stMain"] :is(.st-key-dash_range_group, .st-key-rev_tab_group) [data-testid="stHorizontalBlock"] {
+    gap: 4px !important;
+    align-items: center !important;
+}
+[data-testid="stMain"] :is(.st-key-dash_range_group, .st-key-rev_tab_group) button {
+    min-height: 33px !important;
+    height: 33px !important;
+    border-radius: 7px !important;
+    padding: 0 10px !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--muted) !important;
+}
+[data-testid="stMain"] :is(.st-key-dash_range_group, .st-key-rev_tab_group) button:hover {
+    background: var(--surface2) !important;
+    color: var(--text) !important;
+    border-color: transparent !important;
+}
+[data-testid="stMain"] :is(.st-key-dash_range_group, .st-key-rev_tab_group) __PRI__,
+[data-testid="stMain"] :is(.st-key-dash_range_group, .st-key-rev_tab_group) __PRI__:hover {
+    background: var(--primary-soft) !important;
+    color: var(--primary) !important;
+    border: 1px solid var(--primary) !important;
+    font-weight: 750 !important;
+}
+
+/* Dải 5 thẻ trạng thái Camera hệ thống trên trang Tổng quan (.st-key-panel_dash_cameras) */
+[data-testid="stMain"] .st-key-panel_dash_cameras {
+    margin-top: 6px !important;
+}
+[data-testid="stMain"] [class*="st-key-dash_cam_jump_"] button {
+    min-height: 70px !important;
+    padding: 8px 10px !important;
+    border-radius: 10px !important;
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+}
+[data-testid="stMain"] [class*="st-key-dash_cam_jump_"] button:hover {
+    background: var(--primary-soft) !important;
+    border-color: var(--primary) !important;
+    transform: translateY(-1px) !important;
+}
+[data-testid="stMain"] [class*="st-key-dash_cam_jump_"] button > div {
+    justify-content: flex-start !important;
+    text-align: left !important;
+    width: 100% !important;
+}
+[data-testid="stMain"] [class*="st-key-dash_cam_jump_"] button p {
+    font-size: 10.5px !important;
+    line-height: 1.42 !important;
+    color: var(--muted) !important;
+    text-align: left !important;
+    margin: 0 !important;
+}
+[data-testid="stMain"] [class*="st-key-dash_cam_jump_"] button p strong {
+    font-size: 12px !important;
+    font-weight: 750 !important;
+    color: var(--text) !important;
+}
+
 /* Liên kết dạng chữ (.text-link) */
 [data-testid="stMain"] :is([class*="st-key-viewall"], [class*="st-key-view_all"], [class*="st-key-textlink"], [class*="st-key-dash_top_goto"]) button {
     background: transparent !important;
@@ -223,23 +300,23 @@ OVERRIDE_CSS = """
     background: transparent !important; text-decoration: underline; color: var(--primary-hover) !important;
 }
 
-/* Căn ngang hàng tuyệt đối tiêu đề "Vi phạm gần đây" với nút "Xem tất cả →" trên Dashboard */
-[data-testid="stMain"] .st-key-dash_recent_header {
+/* Căn ngang hàng tuyệt đối tiêu đề "Vi phạm gần đây" với nút "Xem tất cả →" trên Dashboard & "Hồ sơ thẩm định" trên Review */
+[data-testid="stMain"] :is(.st-key-dash_recent_header, .st-key-rev_detail_head_row) {
     margin-bottom: 6px !important;
 }
-[data-testid="stMain"] .st-key-dash_recent_header [data-testid="stHorizontalBlock"] {
+[data-testid="stMain"] :is(.st-key-dash_recent_header, .st-key-rev_detail_head_row) [data-testid="stHorizontalBlock"] {
     align-items: center !important;
 }
-[data-testid="stMain"] .st-key-dash_recent_header [data-testid="stElementContainer"],
-[data-testid="stMain"] .st-key-dash_recent_header [data-testid="stMarkdownContainer"],
-[data-testid="stMain"] .st-key-dash_recent_header .stButton {
+[data-testid="stMain"] :is(.st-key-dash_recent_header, .st-key-rev_detail_head_row) [data-testid="stElementContainer"],
+[data-testid="stMain"] :is(.st-key-dash_recent_header, .st-key-rev_detail_head_row) [data-testid="stMarkdownContainer"],
+[data-testid="stMain"] :is(.st-key-dash_recent_header, .st-key-rev_detail_head_row) .stButton {
     margin: 0 !important;
     padding: 0 !important;
     display: flex !important;
     align-items: center !important;
     min-height: 28px !important;
 }
-[data-testid="stMain"] .st-key-dash_recent_header .sg-panel-title {
+[data-testid="stMain"] :is(.st-key-dash_recent_header, .st-key-rev_detail_head_row) .sg-panel-title {
     margin: 0 !important;
     padding: 0 !important;
     line-height: 1 !important;
@@ -247,13 +324,15 @@ OVERRIDE_CSS = """
     align-items: center !important;
     min-height: 28px !important;
 }
-[data-testid="stMain"] .st-key-dash_recent_header .st-key-dash_top_goto_review {
+[data-testid="stMain"] .st-key-dash_recent_header .st-key-dash_top_goto_review,
+[data-testid="stMain"] .st-key-rev_detail_head_row [class*="st-key-textlink_ask_ai_"] {
     width: 100% !important;
     display: flex !important;
     align-items: center !important;
     justify-content: flex-end !important;
 }
-[data-testid="stMain"] .st-key-dash_recent_header .st-key-dash_top_goto_review button {
+[data-testid="stMain"] .st-key-dash_recent_header .st-key-dash_top_goto_review button,
+[data-testid="stMain"] .st-key-rev_detail_head_row [class*="st-key-textlink_ask_ai_"] button {
     height: 28px !important;
     min-height: 28px !important;
     padding: 0 !important;
@@ -265,13 +344,22 @@ OVERRIDE_CSS = """
 }
 [data-testid="stMain"] .st-key-dash_recent_header .st-key-dash_top_goto_review button > div,
 [data-testid="stMain"] .st-key-dash_recent_header .st-key-dash_top_goto_review button [data-testid="stMarkdownContainer"],
-[data-testid="stMain"] .st-key-dash_recent_header .st-key-dash_top_goto_review button p {
+[data-testid="stMain"] .st-key-dash_recent_header .st-key-dash_top_goto_review button p,
+[data-testid="stMain"] .st-key-rev_detail_head_row [class*="st-key-textlink_ask_ai_"] button > div,
+[data-testid="stMain"] .st-key-rev_detail_head_row [class*="st-key-textlink_ask_ai_"] button p {
     display: inline-flex !important;
     align-items: center !important;
     height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     line-height: 1 !important;
+}
+
+/* Ghim cố định (Sticky) cho khung Hồ sơ thẩm định (Review) và Mục lục nhanh (Docs) */
+[data-testid="stMain"] :is(.st-key-panel_review_detail, .st-key-panel_docs_toc) {
+    position: sticky !important;
+    top: 18px !important;
+    z-index: 4 !important;
 }
 
 /* Nút tải xuống */
@@ -615,17 +703,38 @@ span.sg-card-dl-btn.disabled {
 [data-testid="stMain"] hr { margin: 14px 0 !important; border-color: var(--border) !important; }
 [data-testid="stMain"] h4 { font-size: 15px !important; font-weight: 780 !important; padding: 0 !important; margin: 0 0 4px !important; }
 
-/* ============ 7. Trang Quét AI theo đúng chuẩn Prototype V2 (preview.html) ============ */
+/* ============ 7. Trang Quét AI: Bố cục 2 cột cân bằng (Màn hình trên + Nguồn camera trải ngang dưới) ============ */
 [data-testid="stMain"] :is(.st-key-panel_scan_sources, .st-key-panel_scan_center, .st-key-panel_scan_controls) {
     padding: 15px 16px !important;
     height: auto !important;
     min-height: 0 !important;
 }
 [data-testid="stMain"] :is(.st-key-panel_scan_sources, .st-key-panel_scan_center, .st-key-panel_scan_controls) [data-testid="stVerticalBlock"] {
-    gap: 7px !important;
+    gap: 8px !important;
 }
 [data-testid="stMain"] :is(.st-key-panel_scan_sources, .st-key-panel_scan_center, .st-key-panel_scan_controls) [data-testid="stMarkdownContainer"] {
     margin-bottom: 0 !important;
+}
+
+/* Hàng tiêu đề + thanh chuyển nguồn nằm cùng 1 dòng trong khung Nguồn camera */
+[data-testid="stMain"] .st-key-scan_sources_top_bar [data-testid="stHorizontalBlock"] {
+    align-items: center !important;
+}
+.sg-sources-head-inline {
+    display: flex !important;
+    align-items: baseline !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+}
+.sg-sources-head-inline .sg-panel-title {
+    margin: 0 !important;
+}
+.sg-sources-head-inline .sg-panel-sub {
+    margin: 0 !important;
+}
+.sg-sources-head-dot {
+    color: var(--muted) !important;
+    font-weight: 700 !important;
 }
 
 /* Thanh chuyển nguồn (.source-switch): Hệ thống | Tải tệp */
@@ -633,8 +742,8 @@ span.sg-card-dl-btn.disabled {
     background: var(--surface2) !important;
     border: 1px solid var(--border) !important;
     border-radius: 9px !important;
-    padding: 4px !important;
-    margin: 4px 0 6px !important;
+    padding: 3px !important;
+    margin: 0 !important;
 }
 [data-testid="stMain"] .st-key-source_switch [data-testid="stHorizontalBlock"] {
     gap: 4px !important;
@@ -644,9 +753,9 @@ span.sg-card-dl-btn.disabled {
     min-width: 0 !important;
 }
 [data-testid="stMain"] .st-key-source_switch button {
-    height: 34px !important;
-    min-height: 34px !important;
-    max-height: 34px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
     width: 100% !important;
     padding: 0 8px !important;
     margin: 0 !important;
@@ -682,7 +791,7 @@ span.sg-card-dl-btn.disabled {
     margin: 0 !important;
     padding: 0 !important;
     white-space: nowrap !important;
-    transform: translateY(-1.5px) !important;
+    transform: translateY(-1px) !important;
 }
 [data-testid="stMain"] .st-key-source_switch button:hover {
     background: transparent !important;
@@ -702,32 +811,34 @@ span.sg-card-dl-btn.disabled {
     font-weight: 700 !important;
 }
 
-/* Thẻ camera (.camera-option): ảnh 64x52 + tên + khu vực + trạng thái */
+/* Dải 5 thẻ camera nằm ngang (.st-key-camopt_*): ảnh thumbnail phía trên + tên & trạng thái phía dưới */
 [data-testid="stMain"] [class*="st-key-camopt_"] button {
-    display: grid !important;
-    grid-template-columns: 64px minmax(0, 1fr);
-    gap: 10px;
-    align-items: center;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 7px !important;
     width: 100% !important;
-    min-height: 68px !important;
-    padding: 8px !important;
+    min-height: 122px !important;
+    padding: 7px !important;
     margin: 0 !important;
     border-radius: 10px !important;
     text-align: left !important;
-    background: var(--surface) !important;
+    background: var(--surface2) !important;
     color: var(--text) !important;
     border: 1px solid var(--border) !important;
     box-shadow: none !important;
 }
 [data-testid="stMain"] [class*="st-key-camopt_"] button::before {
     content: "";
-    width: 64px;
-    height: 52px;
+    width: 100%;
+    height: 60px;
     border-radius: 7px;
-    background-color: var(--surface2);
+    background-color: var(--surface);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    border: 1px solid var(--border);
 }
 [data-testid="stMain"] [class*="st-key-camopt_"] button:hover {
     background: var(--surface) !important;
@@ -737,18 +848,19 @@ span.sg-card-dl-btn.disabled {
 [data-testid="stMain"] [class*="st-key-camopt_"] __PRI__,
 [data-testid="stMain"] [class*="st-key-camopt_"] __PRI__:hover {
     background: var(--primary-soft) !important;
-    border: 1px solid var(--primary) !important;
+    border: 1.5px solid var(--primary) !important;
     color: var(--text) !important;
     box-shadow: 0 0 0 1px var(--primary-soft) !important;
 }
 [data-testid="stMain"] [class*="st-key-camopt_"] button > div {
     justify-content: flex-start !important;
     text-align: left !important;
-    width: auto !important;
+    width: 100% !important;
+    padding: 0 2px !important;
 }
 [data-testid="stMain"] [class*="st-key-camopt_"] button p {
     font-size: 10.5px !important;
-    line-height: 1.42 !important;
+    line-height: 1.38 !important;
     text-align: left !important;
     margin: 0 !important;
     color: var(--muted) !important;
@@ -757,13 +869,13 @@ span.sg-card-dl-btn.disabled {
 [data-testid="stMain"] [class*="st-key-camopt_"] button p strong {
     font-size: 11.5px !important;
     color: var(--text) !important;
-    font-weight: 700 !important;
+    font-weight: 750 !important;
 }
 [data-testid="stMain"] [class*="st-key-camopt_"] button span[style*="color"] {
     color: var(--success) !important;
 }
 
-/* Khung Tải tệp (.file-drop) */
+/* Khung Tải tệp nằm ngang (.file-drop + thẻ trạng thái bên phải) */
 [data-testid="stMain"] .st-key-panel_scan_sources [data-testid="stFileUploader"] {
     margin: 0 !important;
     padding: 0 !important;
@@ -778,11 +890,11 @@ span.sg-card-dl-btn.disabled {
     align-items: center !important;
     justify-content: center !important;
     text-align: center !important;
-    padding: 22px 12px 20px !important;
+    padding: 15px 14px 14px !important;
     border: 1px dashed var(--border-strong) !important;
     border-radius: 10px !important;
-    background: transparent !important;
-    min-height: 0 !important;
+    background: var(--surface2) !important;
+    min-height: 118px !important;
     cursor: pointer !important;
     transition: border-color .15s ease, background .15s ease;
 }
@@ -791,13 +903,13 @@ span.sg-card-dl-btn.disabled {
     background: var(--primary-soft) !important;
 }
 [data-testid="stMain"] .st-key-panel_scan_sources [data-testid="stFileUploaderDropzone"]::before {
-    content: "Chọn video từ máy tính" !important;
+    content: "Chọn video hoặc ảnh từ máy tính" !important;
     display: block !important;
-    padding-top: 44px !important;
+    padding-top: 40px !important;
     background-image: url("__UPLOAD_BOX_SVG__") !important;
     background-repeat: no-repeat !important;
     background-position: top center !important;
-    background-size: 35px 35px !important;
+    background-size: 33px 33px !important;
     font-size: 12px !important;
     font-weight: 700 !important;
     color: var(--text) !important;
@@ -806,14 +918,13 @@ span.sg-card-dl-btn.disabled {
     pointer-events: none !important;
 }
 [data-testid="stMain"] .st-key-panel_scan_sources [data-testid="stFileUploaderDropzone"]::after {
-    content: "MP4, MOV hoặc định dạng trình duyệt hỗ trợ" !important;
+    content: "Hỗ trợ MP4, MOV, AVI, JPG, PNG, WEBP" !important;
     display: block !important;
-    margin-top: 5px !important;
-    max-width: 185px !important;
+    margin-top: 3px !important;
     font-size: 10.5px !important;
     font-weight: 500 !important;
     color: var(--muted) !important;
-    line-height: 1.45 !important;
+    line-height: 1.4 !important;
     text-align: center !important;
     pointer-events: none !important;
 }
@@ -835,15 +946,50 @@ span.sg-card-dl-btn.disabled {
     border: 0 !important;
 }
 
-.sg-upload-note {
+.sg-upload-status-card {
+    padding: 13px 15px !important;
+    border-radius: 10px !important;
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    min-height: 118px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 4px !important;
+}
+.sg-upload-status-card.active {
+    background: var(--primary-soft) !important;
+    border-color: var(--primary) !important;
+}
+.sg-upload-pill {
+    display: inline-flex !important;
+    align-self: flex-start !important;
+    padding: 2px 8px !important;
+    border-radius: 999px !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--primary) !important;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.04em !important;
+}
+.sg-upload-status-card strong {
+    font-size: 12.5px !important;
+    font-weight: 750 !important;
+    color: var(--text) !important;
+    line-height: 1.35 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+.sg-upload-status-card p {
+    margin: 0 !important;
     font-size: 11px !important;
-    line-height: 1.45 !important;
     color: var(--muted) !important;
-    margin: 2px 0 0 !important;
-    padding: 0 !important;
+    line-height: 1.48 !important;
 }
 
-/* Khung giữa (.monitor-panel) */
+/* Khung màn hình chính (.monitor-panel) */
 .sg-monitor-heading {
     display: flex !important;
     align-items: flex-start !important;
@@ -871,7 +1017,8 @@ span.sg-card-dl-btn.disabled {
 }
 .sg-monitor-frame {
     position: relative !important;
-    aspect-ratio: 16 / 9 !important;
+    aspect-ratio: 16 / 8.4 !important;
+    max-height: 360px !important;
     width: 100% !important;
     overflow: hidden !important;
     border-radius: 10px !important;
@@ -917,13 +1064,13 @@ span.sg-card-dl-btn.disabled {
     display: grid !important;
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 9px !important;
-    margin-top: 6px !important;
-    padding-top: 10px !important;
+    margin-top: 4px !important;
+    padding-top: 9px !important;
     border-top: 1px solid var(--border) !important;
     align-items: stretch !important;
 }
 .sg-telemetry-item {
-    padding: 9px 11px !important;
+    padding: 8px 11px !important;
     background: var(--surface2) !important;
     border: 1px solid var(--border) !important;
     border-radius: 8px !important;
@@ -942,7 +1089,7 @@ span.sg-card-dl-btn.disabled {
     display: block !important;
     font-size: 11.5px !important;
     color: var(--text) !important;
-    margin-top: 4px !important;
+    margin-top: 3px !important;
     line-height: 1.35 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -1248,6 +1395,9 @@ span.sg-card-dl-btn.disabled {
 }
 
 /* Khoảng cách rõ ràng giữa bảng Nhật ký phiên quét và 2 nút Xuất báo cáo / Tải bằng chứng */
+[data-testid="stMain"] .st-key-panel_scan_log {
+    margin-top: 6px !important;
+}
 [data-testid="stMain"] .st-key-panel_scan_log .sg-table-wrap {
     margin-top: 10px !important;
     margin-bottom: 14px !important;
@@ -1259,16 +1409,44 @@ span.sg-card-dl-btn.disabled {
 
 .sg-guide-box { font-size: 12px !important; line-height: 1.55 !important; padding: 10px 12px !important; }
 
-/* ============ 7C. Trang Trợ lý AI (.st-key-panel_assistant): Khung Chat chuẩn Prototype V2 ============ */
+/* ============ 7C. Trang Trợ lý AI (.st-key-assistant_workspace_row, .st-key-panel_assistant & .st-key-panel_assistant_context) ============ */
+/* Cân bằng chiều cao tuyệt đối giữa khung Chat bên trái và khung Ngữ cảnh bên phải */
+[data-testid="stMain"] .st-key-assistant_workspace_row > [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] {
+    align-items: stretch !important;
+}
+[data-testid="stMain"] .st-key-assistant_workspace_row [data-testid="stColumn"] {
+    display: flex !important;
+    flex-direction: column !important;
+}
+[data-testid="stMain"] .st-key-assistant_workspace_row [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+}
+[data-testid="stMain"] .st-key-assistant_workspace_row [data-testid="stColumn"] > [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:has(> :is(.st-key-panel_assistant, .st-key-panel_assistant_context)) {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+}
 [data-testid="stMain"] .st-key-panel_assistant {
+    flex: 1 1 auto !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
     padding: 0 !important;
-    border-radius: 14px !important;
+    border-radius: 16px !important;
     overflow: hidden !important;
     background: var(--surface) !important;
     border: 1px solid var(--border-strong) !important;
     box-shadow: var(--shadow) !important;
 }
 [data-testid="stMain"] .st-key-panel_assistant > [data-testid="stVerticalBlock"] {
+    flex: 1 1 auto !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
     gap: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -1277,9 +1455,34 @@ span.sg-card-dl-btn.disabled {
     margin: 0 !important;
     padding: 0 !important;
 }
+[data-testid="stMain"] .st-key-panel_assistant > [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:has(.st-key-chat_stream_area) {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+[data-testid="stMain"] .st-key-panel_assistant > [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:has(.st-key-chat_bottom_dock) {
+    margin-top: auto !important;
+}
 [data-testid="stMain"] .st-key-panel_assistant [data-testid="stMarkdownContainer"] {
     margin-bottom: 0 !important;
 }
+
+/* Khung Ngữ cảnh bên phải: cao bằng khung Chat bên trái + khoảng đệm đáy thoáng đãng dưới 2 ô Đã xác nhận / Đã loại bỏ */
+[data-testid="stMain"] .st-key-panel_assistant_context {
+    flex: 1 1 auto !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 18px 20px 26px !important;
+    box-sizing: border-box !important;
+}
+[data-testid="stMain"] .st-key-panel_assistant_context > [data-testid="stVerticalBlock"] {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
 .sg-chat-intro {
     display: flex !important;
     align-items: center !important;
@@ -1315,9 +1518,52 @@ span.sg-card-dl-btn.disabled {
     line-height: 1.4 !important;
 }
 
+/* Thẻ ngữ cảnh sự kiện & tóm tắt ca trực bên phải trang Trợ lý AI */
+.sg-chat-ctx-summary {
+    margin-top: 8px !important;
+    padding: 12px 0 6px !important;
+    border-top: 1px solid var(--border) !important;
+}
+.sg-chat-ctx-summary-title {
+    font-size: 11px !important;
+    font-weight: 750 !important;
+    color: var(--muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    margin-bottom: 9px !important;
+}
+.sg-chat-ctx-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px !important;
+}
+.sg-chat-ctx-stat {
+    padding: 9px 11px !important;
+    border-radius: 9px !important;
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+.sg-chat-ctx-stat span {
+    font-size: 11px !important;
+    color: var(--muted) !important;
+    font-weight: 500 !important;
+}
+.sg-chat-ctx-stat strong {
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    color: var(--text) !important;
+    font-variant-numeric: tabular-nums !important;
+}
+.sg-chat-ctx-stat.warn strong { color: var(--warning) !important; }
+.sg-chat-ctx-stat.ok strong { color: var(--success) !important; }
+
 /* Vùng luồng hội thoại ở giữa (.st-key-chat_stream_area) */
 [data-testid="stMain"] .st-key-chat_stream_area {
-    min-height: 330px !important;
+    flex: 1 1 auto !important;
+    min-height: 360px !important;
     max-height: 520px !important;
     overflow-y: auto !important;
     padding: 20px 32px !important;
@@ -1391,7 +1637,7 @@ span.sg-card-dl-btn.disabled {
 
 /* Vùng tương tác ở đáy khung chat (.st-key-chat_bottom_dock) */
 [data-testid="stMain"] .st-key-chat_bottom_dock {
-    padding: 8px 22px 20px !important;
+    padding: 8px 22px 22px !important;
 }
 [data-testid="stMain"] .st-key-chat_bottom_dock > [data-testid="stVerticalBlock"] {
     gap: 8px !important;
@@ -1412,19 +1658,34 @@ span.sg-card-dl-btn.disabled {
     border-radius: 999px !important;
     min-height: 34px !important;
     height: 34px !important;
-    padding: 0 13px !important;
+    padding: 0 11px !important;
     background: var(--chat-bubble-bg) !important;
     border: 1px solid var(--border-strong) !important;
     color: var(--text) !important;
     font-size: 11px !important;
     font-weight: 650 !important;
     box-shadow: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+[data-testid="stMain"] .st-key-chat_suggest_row button > div,
+[data-testid="stMain"] .st-key-chat_suggest_row button [data-testid="stMarkdownContainer"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 [data-testid="stMain"] .st-key-chat_suggest_row button p {
     font-size: 11px !important;
     font-weight: 650 !important;
-    line-height: 1.2 !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
     white-space: nowrap !important;
+    transform: translateY(-1px) !important;
 }
 [data-testid="stMain"] .st-key-chat_suggest_row button:hover {
     background: var(--primary-soft) !important;
@@ -1497,7 +1758,7 @@ span.sg-card-dl-btn.disabled {
     font-weight: 700 !important;
 }
 
-/* ============ 7D. Trang Tài liệu an toàn: Căn chỉnh thanh tìm kiếm, 6 nút chủ đề & thẻ Expander ở Dark Mode ============ */
+/* ============ 7D. Trang Tài liệu an toàn: Thanh tìm kiếm, 6 nút chủ đề căn giữa chữ hoàn hảo & Mục lục nhanh ============ */
 [data-testid="stMain"] .st-key-doc_toolbar_row [data-testid="stHorizontalBlock"] {
     align-items: center !important;
 }
@@ -1535,13 +1796,104 @@ span.sg-card-dl-btn.disabled {
     min-height: 36px !important;
     max-height: 36px !important;
     border-radius: 999px !important;
-    padding: 0 12px !important;
+    padding: 0 14px !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     white-space: nowrap !important;
 }
-[data-testid="stMain"] .st-key-doc_topic_row button p {
-    white-space: nowrap !important;
-    font-size: 11.5px !important;
+[data-testid="stMain"] .st-key-doc_topic_row button > div,
+[data-testid="stMain"] .st-key-doc_topic_row button [data-testid="stMarkdownContainer"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
     line-height: 1 !important;
+}
+[data-testid="stMain"] .st-key-doc_topic_row button p {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: translateY(-1.5px) !important;
+}
+.sg-doc-sub-tag {
+    display: inline-block !important;
+    font-size: 11px !important;
+    color: var(--muted) !important;
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    padding: 3px 9px !important;
+    margin-bottom: 10px !important;
+}
+.sg-doc-sub-tag b {
+    color: var(--text) !important;
+    font-weight: 700 !important;
+}
+.sg-doc-body-text {
+    font-size: 13px !important;
+    line-height: 1.75 !important;
+    color: var(--text) !important;
+}
+mark.sg-doc-mark {
+    background: var(--warning-bg) !important;
+    color: var(--warning-text) !important;
+    border: 1px solid var(--warning) !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+    font-weight: 700 !important;
+}
+.sg-toc-item {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 9px 11px !important;
+    border-radius: 9px !important;
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    margin-bottom: 7px !important;
+}
+.sg-toc-item.active {
+    background: var(--primary-soft) !important;
+    border-color: var(--primary) !important;
+}
+.sg-toc-code {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    color: var(--primary) !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    padding: 2px 6px !important;
+    white-space: nowrap !important;
+    margin-top: 1px !important;
+}
+.sg-toc-info {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+}
+.sg-toc-info strong {
+    display: block !important;
+    font-size: 11.5px !important;
+    font-weight: 750 !important;
+    color: var(--text) !important;
+    line-height: 1.35 !important;
+}
+.sg-toc-info span {
+    display: block !important;
+    font-size: 10.5px !important;
+    color: var(--muted) !important;
+    line-height: 1.4 !important;
+    margin-top: 2px !important;
 }
 
 /* ============ 8. Khung ứng dụng: sidebar 236px + vùng nội dung căn giữa (theo prototype) ============ */
@@ -1782,11 +2134,17 @@ __NAV_ICONS__
 .sg-table-empty { padding: 22px; text-align: center; color: var(--muted); border: 1px dashed var(--border-strong); border-radius: 12px; margin-bottom: 14px; }
 
 /* ============ 14. Khung nội dung (panel): nền + viền + bo góc + bóng, giống .panel của prototype ============ */
-[data-testid="stMain"] [class*="st-key-panel_"]:not(.st-key-panel_assistant) {
+[data-testid="stMain"] [class*="st-key-panel_"]:not(.st-key-panel_assistant):not(.st-key-panel_assistant_context) {
     background: var(--surface) !important;
     border: 1px solid var(--border-strong) !important;
     border-radius: 16px !important;
     padding: 18px 20px !important;
+    box-shadow: var(--shadow) !important;
+}
+[data-testid="stMain"] .st-key-panel_assistant_context {
+    background: var(--surface) !important;
+    border: 1px solid var(--border-strong) !important;
+    border-radius: 16px !important;
     box-shadow: var(--shadow) !important;
 }
 [data-testid="stMain"] [class*="st-key-subpanel_"]:not([class*="st-key-subpanel_chat_"]) {
@@ -1883,7 +2241,7 @@ def _boost_specificity(css: str) -> str:
         sels = _split_top_level(m.group(1).strip())
         boosted = ",\n".join("html:not(#sg) " + s for s in sels)
         out.append(boosted + " {" + m.group(2).strip() + "}")
-    return "\n".join(out)
+    return "\n".join(rules for rules in out)
 
 
 OVERRIDE_CSS = _boost_specificity(OVERRIDE_CSS)

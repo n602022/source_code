@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
 """
 ui_pages/review.py — Trang Duyệt vi phạm & Điều khiển khẩn cấp Đội trưởng (Review Queue V2).
-Đã tinh chỉnh và tối ưu:
+Đã nâng cấp theo 8 nguyên tắc thiết kế UI/UX:
 - Đồng bộ chiều cao các thẻ video vi phạm: rút gọn dòng thông tin nguồn thành "Camera khu vực X" /
   "Video tải lên" / "Ảnh tải lên" kèm ngày giờ và % AI nhận diện; dựng theo từng hàng 2 cột để không bị lệch.
 - Bổ sung nút tải xuống bằng chứng (`.sg-card-dl-btn`) ngay ở góc dưới bên phải mỗi thẻ sự kiện (ngang hàng
   với thông tin nguồn và ngày giờ), tự động lấy đúng đuôi file thực tế từ thuật toán (`ev["img_path"].suffix`).
-- Thanh điều hướng phân trang hiện đại ở dưới danh sách thẻ: cố định 6 video / trang (bỏ hộp chọn số trang),
-  căn giữa hoàn hảo dòng chữ "Hiển thị X–Y / N video" ngang hàng với cụm nút chuyển trang (‹, 1, 2, ... ›).
+- Thanh điều hướng phân trang hiện đại ở dưới danh sách thẻ: cố định 6 video / trang, căn giữa hoàn hảo
+  dòng chữ "Hiển thị X–Y / N video" ngang hàng với cụm nút chuyển trang (‹, 1, 2, ... ›).
+- Bối cảnh điều khiển & Giảm tải nhận thức:
+  + Khung `Hồ sơ thẩm định` bên phải được ghim cố định (`position: sticky; top: 18px`) khi cuộn danh sách thẻ,
+    kèm liên kết chuyển nhanh sang hỏi Trợ lý AI về đúng sự kiện đang xem.
+  + Khi xem một sự kiện đã duyệt (`confirmed` / `false_positive`), nút "Đưa lại về Chờ duyệt" đặt ngay trong
+    khung `Hồ sơ thẩm định` (đúng ngữ cảnh đối tượng).
+  + Bảng `Lịch sử sự kiện đã duyệt` ở cuối trang được thu gọn gọn gàng trong một ngăn kéo (`st.expander`),
+    giúp màn hình làm việc chính luôn thoáng đãng và tập trung.
 """
 import datetime
 import math
@@ -122,7 +129,16 @@ def _set_rev_card_page(page_num: int):
 def _decide_event(event_id: int, new_status: str):
     eid = int(event_id)
     update_event_status(eid, new_status)
-    st.session_state.last_reviewed_action = {"event_id": eid, "new_status": new_status}
+    if new_status == "pending":
+        st.session_state.last_reviewed_action = None
+    else:
+        st.session_state.last_reviewed_action = {"event_id": eid, "new_status": new_status}
+
+
+def _ask_ai_about_event(event_id: int):
+    """Chuyển sang trang Trợ lý AI với ngữ cảnh được ghim sẵn vào sự kiện đang thẩm định."""
+    st.session_state.selected_review_event_id = int(event_id)
+    st.session_state.active_page = "chat"
 
 
 @st.dialog("Xác nhận dừng khẩn cấp")
@@ -167,49 +183,52 @@ def render_review_page(raw_events: list, enriched_events: list):
     confirmed_count = len(confirmed_events)
     rejected_count = len(rejected_events)
 
-    # --- THANH CÔNG CỤ LỌC TRẠNG THÁI (REVIEW TOOLBAR CHUẨN PROTOTYPE V2) ---
-    rt1, rt2, rt3, rt4, rt5 = st.columns([1.15, 1.15, 1.15, 1.0, 1.45], gap="small")
+    # --- THANH CÔNG CỤ LỌC TRẠNG THÁI (NHÓM 4 TAB BÊN TRÁI | NÚT HÀNH ĐỘNG HÀNG LOẠT BÊN PHẢI) ---
+    rt_left, rt_spacer, rt_bulk = st.columns([3.85, 0.45, 1.35], gap="small", vertical_alignment="center")
     cur_tab = st.session_state.get("review_tab_filter", "pending")
 
-    with rt1:
-        st.button(
-            f"Chờ duyệt ({pending_count})",
-            key="rev_tab_pending",
-            type="primary" if cur_tab == "pending" else "secondary",
-            width="stretch",
-            on_click=_set_review_tab,
-            args=("pending",),
-        )
-    with rt2:
-        st.button(
-            f"Đã xác nhận ({confirmed_count})",
-            key="rev_tab_confirmed",
-            type="primary" if cur_tab == "confirmed" else "secondary",
-            width="stretch",
-            on_click=_set_review_tab,
-            args=("confirmed",),
-        )
-    with rt3:
-        st.button(
-            f"Đã loại bỏ ({rejected_count})",
-            key="rev_tab_rejected",
-            type="primary" if cur_tab == "false_positive" else "secondary",
-            width="stretch",
-            on_click=_set_review_tab,
-            args=("false_positive",),
-        )
-    with rt4:
-        st.button(
-            f"Tất cả ({len(enriched_events)})",
-            key="rev_tab_all",
-            type="primary" if cur_tab == "all" else "secondary",
-            width="stretch",
-            on_click=_set_review_tab,
-            args=("all",),
-        )
-    with rt5:
+    with rt_left:
+        with st.container(key="rev_tab_group"):
+            rt1, rt2, rt3, rt4 = st.columns([1.15, 1.15, 1.15, 0.95], gap="small")
+            with rt1:
+                st.button(
+                    f"Chờ duyệt ({pending_count})",
+                    key="rev_tab_pending",
+                    type="primary" if cur_tab == "pending" else "secondary",
+                    width="stretch",
+                    on_click=_set_review_tab,
+                    args=("pending",),
+                )
+            with rt2:
+                st.button(
+                    f"Đã xác nhận ({confirmed_count})",
+                    key="rev_tab_confirmed",
+                    type="primary" if cur_tab == "confirmed" else "secondary",
+                    width="stretch",
+                    on_click=_set_review_tab,
+                    args=("confirmed",),
+                )
+            with rt3:
+                st.button(
+                    f"Đã loại bỏ ({rejected_count})",
+                    key="rev_tab_rejected",
+                    type="primary" if cur_tab == "false_positive" else "secondary",
+                    width="stretch",
+                    on_click=_set_review_tab,
+                    args=("false_positive",),
+                )
+            with rt4:
+                st.button(
+                    f"Tất cả ({len(enriched_events)})",
+                    key="rev_tab_all",
+                    type="primary" if cur_tab == "all" else "secondary",
+                    width="stretch",
+                    on_click=_set_review_tab,
+                    args=("all",),
+                )
+    with rt_bulk:
         if pending_events:
-            if st.button("Duyệt xác nhận tất cả", type="primary", width="stretch"):
+            if st.button(f"Duyệt tất cả ({pending_count})", type="primary", width="stretch", key="rev_bulk_confirm_btn"):
                 for ev in pending_events:
                     update_event_status(int(ev["event_id"]), "confirmed")
                 st.rerun()
@@ -258,12 +277,11 @@ def render_review_page(raw_events: list, enriched_events: list):
         selected_ev = visible_events[0]
         st.session_state.selected_review_event_id = selected_ev["event_id"]
 
-    # --- BỐ CỤC 2 CỘT CHUẨN PROTOTYPE V2: DANH SÁCH THẺ BÊN TRÁI | HỒ SƠ THẨM ĐỊNH BÊN PHẢI ---
+    # --- BỐ CỤC 2 CỘT CHUẨN PROTOTYPE V2: DANH SÁCH THẺ BÊN TRÁI | HỒ SƠ THẨM ĐỊNH GHIM CỐ ĐỊNH BÊN PHẢI ---
     col_list, col_detail = st.columns([1.35, 1.1], gap="medium")
 
     with col_list:
         if visible_events:
-            # Dựng theo từng hàng ngang 2 cột để các khung video luôn thẳng hàng tuyệt đối
             for row_start in range(0, len(paged_events), 2):
                 row_items = paged_events[row_start:row_start + 2]
                 grid_cols = st.columns(2, gap="small")
@@ -401,12 +419,10 @@ def render_review_page(raw_events: list, enriched_events: list):
                             _confirm_estop_dialog(lc_id, lc_cam, lc_wk, False)
 
     # ==========================================================================
-    # CỘT PHẢI: HỒ SƠ THẨM ĐỊNH CHI TIẾT & LỆNH KHẨN CẤP ĐỘI TRƯỞNG
+    # CỘT PHẢI: HỒ SƠ THẨM ĐỊNH CHI TIẾT (STICKY) & LỆNH KHẨN CẤP ĐỘI TRƯỞNG
     # ==========================================================================
     with col_detail:
         with st.container(key="panel_review_detail"):
-            st.markdown('<div class="sg-panel-title">Hồ sơ thẩm định</div>', unsafe_allow_html=True)
-
             target_ev = selected_ev or (enriched_events[0] if enriched_events else None)
             if target_ev is not None:
                 cur_id = int(target_ev["event_id"])
@@ -415,6 +431,19 @@ def render_review_page(raw_events: list, enriched_events: list):
                 info_loi = GIAI_THICH_LOI_VI_PHAM.get(cur_code, GIAI_THICH_LOI_VI_PHAM["NO-Hardhat"])
                 ev_img_path = target_ev.get("img_path")
                 video_sec = target_ev.get("video_sec")
+
+                with st.container(key="rev_detail_head_row"):
+                    dh_left, dh_right = st.columns([1.5, 1.15], gap="small", vertical_alignment="center")
+                    with dh_left:
+                        st.markdown('<div class="sg-panel-title">Hồ sơ thẩm định</div>', unsafe_allow_html=True)
+                    with dh_right:
+                        st.button(
+                            f"Hỏi Trợ lý AI về #{cur_id} →",
+                            key=f"textlink_ask_ai_{cur_id}",
+                            width="stretch",
+                            on_click=_ask_ai_about_event,
+                            args=(cur_id,),
+                        )
 
                 if ev_img_path is not None:
                     sec_str = f" — Giây thứ {video_sec}s trong video" if video_sec is not None else ""
@@ -465,24 +494,53 @@ def render_review_page(raw_events: list, enriched_events: list):
                 )
 
                 st.markdown("**Quyết định thẩm định**")
-                btn_c1, btn_c2 = st.columns(2, gap="small")
-                with btn_c1:
-                    st.button(
-                        "Xác nhận vi phạm",
-                        type="primary",
-                        width="stretch",
-                        key=f"confirm_{cur_id}",
-                        on_click=_decide_event,
-                        args=(cur_id, "confirmed"),
-                    )
-                with btn_c2:
-                    st.button(
-                        "Đánh dấu báo nhầm",
-                        width="stretch",
-                        key=f"reject_{cur_id}",
-                        on_click=_decide_event,
-                        args=(cur_id, "false_positive"),
-                    )
+                if target_ev["status"] == "pending":
+                    btn_c1, btn_c2 = st.columns(2, gap="small")
+                    with btn_c1:
+                        st.button(
+                            "Xác nhận vi phạm",
+                            type="primary",
+                            width="stretch",
+                            key=f"confirm_{cur_id}",
+                            on_click=_decide_event,
+                            args=(cur_id, "confirmed"),
+                        )
+                    with btn_c2:
+                        st.button(
+                            "Đánh dấu báo nhầm",
+                            width="stretch",
+                            key=f"reject_{cur_id}",
+                            on_click=_decide_event,
+                            args=(cur_id, "false_positive"),
+                        )
+                else:
+                    btn_c1, btn_c2, btn_c3 = st.columns([1.05, 1.05, 0.95], gap="small")
+                    with btn_c1:
+                        st.button(
+                            "Xác nhận vi phạm",
+                            type="primary" if target_ev["status"] == "confirmed" else "secondary",
+                            width="stretch",
+                            key=f"confirm_{cur_id}",
+                            on_click=_decide_event,
+                            args=(cur_id, "confirmed"),
+                        )
+                    with btn_c2:
+                        st.button(
+                            "Đánh dấu báo nhầm",
+                            type="primary" if target_ev["status"] == "false_positive" else "secondary",
+                            width="stretch",
+                            key=f"reject_{cur_id}",
+                            on_click=_decide_event,
+                            args=(cur_id, "false_positive"),
+                        )
+                    with btn_c3:
+                        st.button(
+                            "Về Chờ duyệt",
+                            width="stretch",
+                            key=f"reset_pend_{cur_id}",
+                            on_click=_decide_event,
+                            args=(cur_id, "pending"),
+                        )
 
                 st.markdown("**Điều khiển hiện trường**")
                 iot_c1, iot_c2 = st.columns(2, gap="small")
@@ -512,16 +570,14 @@ def render_review_page(raw_events: list, enriched_events: list):
                     ):
                         _confirm_estop_dialog(cur_id, cam_loc, wk_code, True)
             else:
+                st.markdown('<div class="sg-panel-title">Hồ sơ thẩm định</div>', unsafe_allow_html=True)
                 st.info("Chưa có sự kiện nào.")
 
     # ==========================================================================
-    # BẢNG LỊCH SỬ XỬ LÝ & CHỈNH SỬA TRẠNG THÁI (KHI BẤM NHẦM ĐÚNG <-> SAI)
+    # NGĂN KÉO LỊCH SỬ SỰ KIỆN ĐÃ DUYỆT & CHỈNH SỬA TRẠNG THÁI NHANH (GIẢM TẢI NHẬN THỨC)
     # ==========================================================================
-    st.markdown("---")
-    with st.container(key="panel_review_history"):
-        st.markdown('<div class="sg-panel-title">Lịch sử sự kiện đã duyệt</div>', unsafe_allow_html=True)
-
-        reviewed_enriched = [e for e in enriched_events if e.get("status") != "pending"]
+    reviewed_enriched = [e for e in enriched_events if e.get("status") != "pending"]
+    with st.expander(f"Lịch sử sự kiện đã duyệt & Đổi lại trạng thái ({len(reviewed_enriched)} sự kiện)", expanded=False):
         if reviewed_enriched:
             fix_c1, fix_c2, fix_c3, fix_c4 = st.columns([2.1, 1.0, 1.0, 1.0], gap="small")
             rev_map = {
@@ -552,10 +608,13 @@ def render_review_page(raw_events: list, enriched_events: list):
                 )
             with fix_c4:
                 st.write("")
-                if st.button("Đưa về: Chờ duyệt", width="stretch", key="btn_fix_to_pending"):
-                    update_event_status(target_fix_id, "pending")
-                    st.session_state.last_reviewed_action = None
-                    st.rerun()
+                st.button(
+                    "Đưa về: Chờ duyệt",
+                    width="stretch",
+                    key="btn_fix_to_pending",
+                    on_click=_decide_event,
+                    args=(target_fix_id, "pending"),
+                )
 
             df_hist = pd.DataFrame([
                 {

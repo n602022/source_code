@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 ui_pages/dashboard.py — Trang Tổng quan an toàn (Dashboard V2).
-Đã tinh chỉnh và tối ưu:
-- Đổi tiêu đề khung bên phải thành "Vi phạm gần đây" và căn ngang hàng tuyệt đối với nút "Xem tất cả →".
-- Đồng bộ chiều cao các thẻ video vi phạm gần đây: rút gọn dòng thông tin nguồn thành "Camera khu vực X" /
-  "Video tải lên" / "Ảnh tải lên" kèm ngày giờ và % AI nhận diện; dựng theo từng hàng 2 cột để không bao giờ bị lệch.
-- Bộ lọc Camera chỉ hiển thị cố định 5 camera hệ thống (Camera số 1 — Khu vực 1 đến Camera số 5 — Khu vực 5).
+Đã nâng cấp theo 8 nguyên tắc thiết kế UI/UX (Clarity, Consistency, Hierarchy, White space & Alignment,
+Contrast, Context, Feedback, Simplicity):
+- Phân cấp & Gần gũi trên Thanh công cụ: Nhóm 4 nút khoảng thời gian thành cụm Segmented Pill bên trái
+  (`.st-key-dash_range_group`), đặt nút `Bộ lọc` (hiển thị số tiêu chí đang lọc nếu có) và Popover `Xuất dữ liệu`
+  (gộp gọn `.CSV` và `.ZIP` kèm chú thích dung lượng/số bản ghi) sát lề phải.
+- Bối cảnh & Phản hồi: Khi đang bật bất kỳ bộ lọc nào, hiển thị dải chip tóm tắt bộ lọc đang áp dụng kèm nút xóa nhanh.
+- Cân bằng bố cục 2 cột: Khung `Vi phạm gần đây` căn ngang hàng tuyệt đối tiêu đề với nút `Xem tất cả →`,
+  thẻ sự kiện đồng nhất chiều cao; khung `Camera trong hệ thống` hiển thị dạng lưới trạng thái trực quan kèm
+  nút bấm chuyển thẳng sang camera đó trên trang Quét AI & Camera.
 """
 import datetime
 import re
@@ -66,6 +70,13 @@ def _goto_review_page(event_id: int | None = None, status_tab: str | None = None
     if status_tab is not None:
         st.session_state.review_tab_filter = status_tab
     st.session_state.active_page = "review"
+
+
+def _goto_scanner_camera(cam_idx: int):
+    """Chuyển thẳng sang trang Quét AI & Camera và chọn đúng camera khu vực tương ứng."""
+    st.session_state.scan_source_mode = "Hệ thống Camera công trường"
+    st.session_state.scan_cam_idx = int(cam_idx)
+    st.session_state.active_page = "scan"
 
 
 def _filter_events_by_toolbar(enriched_events: list) -> list:
@@ -218,53 +229,65 @@ def render_dashboard_page(raw_events: list, enriched_events: list):
     cur_range = st.session_state.get("dash_range", "all")
     filter_open = st.session_state.get("dash_filter_open", False)
 
-    # --- THANH CÔNG CỤ THỜI GIAN & BỘ LỌC ---
-    tb1, tb2, tb3, tb4, tb5, tb6, tb7 = st.columns([0.95, 1.25, 1.25, 0.95, 1.0, 1.35, 1.35], gap="small")
+    # Đếm số bộ lọc nâng cao đang kích hoạt để phản hồi trực quan ngay trên nút Bộ lọc
+    active_filter_count = sum([
+        1 if st.session_state.get("dash_cam_filter", "all") != "all" else 0,
+        1 if st.session_state.get("dash_status_filter", "all") != "all" else 0,
+        1 if st.session_state.get("dash_sev_filter", "all") != "all" else 0,
+        1 if cur_range == "custom" else 0,
+    ])
+    filter_btn_label = f"Bộ lọc ({active_filter_count})" if active_filter_count > 0 else "Bộ lọc"
 
-    with tb1:
-        st.button(
-            "Hôm nay",
-            key="range_today",
-            type="primary" if cur_range == "today" else "secondary",
-            width="stretch",
-            on_click=_set_dash_range,
-            args=("today",),
-        )
-    with tb2:
-        st.button(
-            "7 ngày gần nhất",
-            key="range_7d",
-            type="primary" if cur_range == "7d" else "secondary",
-            width="stretch",
-            on_click=_set_dash_range,
-            args=("7d",),
-        )
-    with tb3:
-        st.button(
-            "30 ngày gần nhất",
-            key="range_30d",
-            type="primary" if cur_range == "30d" else "secondary",
-            width="stretch",
-            on_click=_set_dash_range,
-            args=("30d",),
-        )
-    with tb4:
-        st.button(
-            "Tất cả",
-            key="range_all",
-            type="primary" if cur_range == "all" else "secondary",
-            width="stretch",
-            on_click=_set_dash_range,
-            args=("all",),
-        )
-    with tb5:
-        st.button(
-            "Bộ lọc",
-            key="toggle_dash_filter",
-            type="primary" if filter_open else "secondary",
-            width="stretch",
-            on_click=_toggle_dash_filter,
-        )
+    # --- THANH CÔNG CỤ PHÂN CẤP RÕ RÀNG: NHÓM THỜI GIAN BÊN TRÁI | BỘ LỌC & XUẤT DỮ LIỆU BÊN PHẢI ---
+    with st.container(key="dash_toolbar_wrap"):
+        tb_left, tb_spacer, tb_filter, tb_export = st.columns([3.7, 0.55, 0.95, 1.25], gap="small", vertical_alignment="center")
+        with tb_left:
+            with st.container(key="dash_range_group"):
+                r1, r2, r3, r4 = st.columns([0.9, 1.25, 1.25, 0.85], gap="small")
+                with r1:
+                    st.button(
+                        "Hôm nay",
+                        key="range_today",
+                        type="primary" if cur_range == "today" else "secondary",
+                        width="stretch",
+                        on_click=_set_dash_range,
+                        args=("today",),
+                    )
+                with r2:
+                    st.button(
+                        "7 ngày gần nhất",
+                        key="range_7d",
+                        type="primary" if cur_range == "7d" else "secondary",
+                        width="stretch",
+                        on_click=_set_dash_range,
+                        args=("7d",),
+                    )
+                with r3:
+                    st.button(
+                        "30 ngày gần nhất",
+                        key="range_30d",
+                        type="primary" if cur_range == "30d" else "secondary",
+                        width="stretch",
+                        on_click=_set_dash_range,
+                        args=("30d",),
+                    )
+                with r4:
+                    st.button(
+                        "Tất cả",
+                        key="range_all",
+                        type="primary" if cur_range == "all" else "secondary",
+                        width="stretch",
+                        on_click=_set_dash_range,
+                        args=("all",),
+                    )
+        with tb_filter:
+            st.button(
+                filter_btn_label,
+                key="toggle_dash_filter",
+                type="primary" if (filter_open or active_filter_count > 0) else "secondary",
+                width="stretch",
+                on_click=_toggle_dash_filter,
+            )
 
     if filter_open:
         with st.container(key="panel_dash_filter"):
@@ -305,8 +328,8 @@ def render_dashboard_page(raw_events: list, enriched_events: list):
             with fc3:
                 sev_map = {
                     "all": "Tất cả mức độ",
-                    "high": "Cao (Mũ bảo hộ / Áo phản quang)",
-                    "medium": "Trung bình (Khẩu trang)",
+                    "high": "Rủi ro cao (Mũ / Áo)",
+                    "medium": "Rủi ro vừa (Khẩu trang)",
                 }
                 chosen_sev = st.selectbox(
                     "Mức độ rủi ro",
@@ -330,7 +353,7 @@ def render_dashboard_page(raw_events: list, enriched_events: list):
             with fc5:
                 st.write("")
                 st.button(
-                    "Xóa bộ lọc",
+                    "Đặt lại mặc định",
                     key="dash_reset_filter",
                     width="stretch",
                     on_click=_reset_dash_filters,
@@ -338,24 +361,28 @@ def render_dashboard_page(raw_events: list, enriched_events: list):
 
     filtered_events = _filter_events_by_toolbar(enriched_events)
 
-    with tb6:
-        st.download_button(
-            label="Xuất báo cáo (.CSV)",
-            data=build_shift_csv_bytes(filtered_events),
-            file_name=f"Bao_Cao_Vi_Pham_Ca_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-            mime="text/csv",
-            width="stretch",
-            key="dash_dl_csv",
-        )
-    with tb7:
-        st.download_button(
-            label="Tải bằng chứng (.ZIP)",
-            data=build_evidence_zip_bytes(filtered_events),
-            file_name=f"Bang_Chung_Vi_Pham_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.zip",
-            mime="application/zip",
-            width="stretch",
-            key="dash_dl_zip",
-        )
+    with tb_export:
+        with st.container(key="dash_export_pop"):
+            with st.popover(f"Xuất dữ liệu ({len(filtered_events)})", width="stretch"):
+                st.markdown("**Trích xuất dữ liệu ca trực**")
+                st.caption(f"Đang chọn **{len(filtered_events)} sự kiện** theo bộ lọc hiện tại.")
+                st.download_button(
+                    label="Tải bảng báo cáo (.CSV)",
+                    data=build_shift_csv_bytes(filtered_events),
+                    file_name=f"Bao_Cao_Vi_Pham_Ca_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    mime="text/csv",
+                    type="primary",
+                    width="stretch",
+                    key="dash_dl_csv",
+                )
+                st.download_button(
+                    label="Tải gói ảnh bằng chứng (.ZIP)",
+                    data=build_evidence_zip_bytes(filtered_events),
+                    file_name=f"Bang_Chung_Vi_Pham_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.zip",
+                    mime="application/zip",
+                    width="stretch",
+                    key="dash_dl_zip",
+                )
 
     total_events = len(filtered_events)
     pending_list = [e for e in filtered_events if e["status"] == "pending"]
@@ -571,8 +598,37 @@ def render_dashboard_page(raw_events: list, enriched_events: list):
             unsafe_allow_html=True,
         )
 
+        # 4. DẢI TRẠNG THÁI 5 CAMERA HỆ THỐNG NẰM NGANG (Cân bằng chiều cao 2 cột và cho phép bấm mở trực tiếp camera)
+        with st.container(key="panel_dash_cameras"):
+            st.markdown(
+                clean_html(
+                    """
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <div>
+                            <div class="sg-panel-title">Camera trong hệ thống</div>
+                            <div class="sg-panel-sub">Nhấn vào từng khu vực để chuyển nhanh sang màn hình Quét AI trực tiếp</div>
+                        </div>
+                        <span class="sg-badge confirmed">5 / 5 trực tuyến</span>
+                    </div>
+                    """
+                ),
+                unsafe_allow_html=True,
+            )
+            cam_cols = st.columns(len(system_cams), gap="small")
+            for idx_c, cam_name in enumerate(system_cams):
+                cam_ev_cnt = sum(1 for e in filtered_events if e.get("system_camera") == cam_name and e.get("status") != "false_positive")
+                sub_txt = f"{cam_ev_cnt} cảnh báo" if cam_ev_cnt > 0 else "An toàn"
+                with cam_cols[idx_c]:
+                    st.button(
+                        f"**Cam {idx_c + 1:02d}**  \nKhu vực {idx_c + 1}  \n:green[●] {sub_txt}",
+                        key=f"dash_cam_jump_{idx_c}",
+                        width="stretch",
+                        on_click=_goto_scanner_camera,
+                        args=(idx_c,),
+                    )
+
     with col_right:
-        # 1. PANEL VI PHẠM GẦN ĐÂY (Tiêu đề ngang hàng nút Xem tất cả →, thẻ đồng nhất chiều cao)
+        # PANEL VI PHẠM GẦN ĐÂY (Tiêu đề ngang hàng nút Xem tất cả →, thẻ đồng nhất chiều cao)
         with st.container(key="panel_dash_evidence"):
             with st.container(key="dash_recent_header"):
                 hd_c1, hd_c2 = st.columns([2.1, 1.0], vertical_alignment="center")
@@ -591,7 +647,6 @@ def render_dashboard_page(raw_events: list, enriched_events: list):
 
             recent_slice = filtered_events[:4]
             if recent_slice:
-                # Dựng theo từng cặp hàng ngang (2 thẻ mỗi hàng) để 2 cột luôn thẳng hàng tuyệt đối
                 for row_start in range(0, len(recent_slice), 2):
                     row_items = recent_slice[row_start:row_start + 2]
                     grid_cols = st.columns(2, gap="small")
@@ -636,24 +691,3 @@ def render_dashboard_page(raw_events: list, enriched_events: list):
                 width="stretch",
                 on_click=_goto_review_page,
             )
-
-        # 2. PANEL CAMERA TRONG HỆ THỐNG (Camera số 1..5 cố định)
-        cam_rows_list = [
-            f'<div class="sg-cam-status-row">'
-            f"<span>{cam_name}</span>"
-            f'<span class="sg-badge confirmed">Sẵn sàng</span>'
-            f"</div>"
-            for cam_name in system_cams
-        ]
-        cam_rows_html = "".join(cam_rows_list)
-        st.markdown(
-            clean_html(
-                f"""
-                <div class="sg-panel">
-                    <div class="sg-panel-title">Camera trong hệ thống</div>
-                    {cam_rows_html}
-                </div>
-                """
-            ),
-            unsafe_allow_html=True,
-        )

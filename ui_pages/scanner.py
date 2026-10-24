@@ -1,15 +1,25 @@
 # -*- coding: utf-8 -*-
 """
 ui_pages/scanner.py — Trang Quét AI & Camera (Live Monitoring V2).
-Đã tinh chỉnh hoàn thiện các chi tiết giao diện:
-1. Chữ "Hệ thống" và "Tải tệp" căn giữa cân đối trong thanh chuyển nguồn (.st-key-source_switch).
-2. Các công tắc bật/tắt (Toggle Switch) trong "Hành vi giám sát" luôn có nền rãnh rõ ràng cả khi chuột ở ngoài
+Đã tối ưu lại bố cục tổng thể để lấp đầy khoảng trống phía dưới và cân bằng chiều cao 2 bên:
+1. Chuyển từ bố cục 3 cột lệch chiều cao sang bố cục 2 cột cân đối (`col_main, col_controls = st.columns([2.35, 1.05])`):
+   - Cột trái (`col_main`): Phía trên là khung Màn hình Giám sát AI (rộng rãi, sắc nét hơn); ngay phía dưới
+     là khung "Nguồn camera" đặt nằm ngang, ngang hàng trực tiếp với khu vực "Hành vi giám sát" bên cột phải,
+     triệt tiêu hoàn toàn khoảng trống lớn bên dưới màn hình video.
+   - Cột phải (`col_controls`): Khung "Cấu hình AI" và "Hành vi giám sát" liền mạch từ trên xuống dưới.
+2. Trong khung "Nguồn camera" nằm ngang:
+   - Thanh tiêu đề "Nguồn camera — Chọn nguồn cần giám sát" nằm cùng hàng với nút chuyển chế độ "Hệ thống | Tải tệp".
+   - Chế độ "Hệ thống": 5 camera (Camera 01..05) dàn đều thành dải 5 thẻ ngang (5 cột) với ảnh thumbnail + trạng thái.
+   - Chế độ "Tải tệp": Khung kéo-thả tệp nằm ngang bên trái kết hợp thẻ trạng thái tệp & hướng dẫn kiểm tra nhanh bên phải.
+3. Chữ "Hệ thống" và "Tải tệp" căn giữa cân đối trong thanh chuyển nguồn (.st-key-source_switch).
+4. Các công tắc bật/tắt (Toggle Switch) trong "Hành vi giám sát" luôn có nền rãnh rõ ràng cả khi chuột ở ngoài
    lẫn khi di chuột vào trong chế độ tối và sáng, đồng thời thẳng hàng dọc sát lề phải.
-3. Cụm phân trang trong "Nhật ký phiên quét" (.st-key-scan_log_pager) được thiết kế dạng thanh pill hiện đại, gọn gàng.
-4. Hai nút "Xuất file báo cáo (.CSV)" và "Tải gói ảnh bằng chứng (.ZIP)" tách rời thoáng đãng với bảng Nhật ký phía trên.
+5. Cụm phân trang trong "Nhật ký phiên quét" (.st-key-scan_log_pager) thiết kế dạng thanh pill hiện đại, gọn gàng,
+   tách rời thoáng đãng với 2 nút "Xuất file báo cáo (.CSV)" và "Tải gói ảnh bằng chứng (.ZIP)".
 """
 import base64
 import datetime
+import html as _html
 import math
 import tempfile
 from pathlib import Path
@@ -27,6 +37,7 @@ from core_logic import (
     build_shift_csv_bytes,
     clean_html,
     find_sample_videos,
+     fmt_ts_vn,
     get_active_violation_types,
     get_effective_auto_confirm,
     load_event_evidence,
@@ -58,7 +69,7 @@ def _on_scan_log_size_change():
 
 @st.cache_data(show_spinner=False)
 def _camera_thumb_uri(path_str: str) -> str:
-    """Ảnh xem trước 64x52 (cắt giữa) lấy từ một khung hình của video, trả về data-URI."""
+    """Ảnh xem trước 16:10 (cắt giữa) lấy từ một khung hình của video, trả về data-URI."""
     try:
         cap = cv2.VideoCapture(path_str)
         total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
@@ -69,7 +80,7 @@ def _camera_thumb_uri(path_str: str) -> str:
         if not ok or frame is None:
             return ""
         h, w = frame.shape[:2]
-        target = 64 / 52
+        target = 16 / 10
         if w / h > target:
             new_w = int(h * target)
             x0 = (w - new_w) // 2
@@ -78,8 +89,8 @@ def _camera_thumb_uri(path_str: str) -> str:
             new_h = int(w / target)
             y0 = (h - new_h) // 2
             frame = frame[y0:y0 + new_h, :]
-        frame = cv2.resize(frame, (128, 104), interpolation=cv2.INTER_AREA)
-        ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        frame = cv2.resize(frame, (160, 100), interpolation=cv2.INTER_AREA)
+        ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 72])
         return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode() if ok else ""
     except Exception:
         return ""
@@ -154,7 +165,7 @@ def _build_monitor_frame_html(
 
 
 def _build_telemetry_html(worker_cnt: int, env_info: dict) -> str:
-    """Dựng 3 thẻ thông số Telemetry ở đáy khung giữa với nội dung súc tích, cao bằng nhau."""
+    """Dựng 3 thẻ thông số Telemetry ở đáy khung màn hình quét với nội dung súc tích, cao bằng nhau."""
     blur_val = float(env_info.get("blur_score", 0.0))
     glare_val = float(env_info.get("glare_pct", 0.0))
     is_blur = bool(env_info.get("is_blur", blur_val < 45.0))
@@ -184,10 +195,15 @@ def _build_telemetry_html(worker_cnt: int, env_info: dict) -> str:
 
 
 def render_scanner_page(raw_events: list):
-    """Hiển thị trang Quét AI & Camera theo bố cục 3 cột chuẩn Prototype V2."""
+    """
+    Hiển thị trang Quét AI & Camera theo bố cục 2 cột cân bằng chiều cao:
+    - Cột chính bên trái (`col_main`): Trên là Màn hình Giám sát AI 16:9 cỡ lớn, dưới là dải Nguồn Camera nằm ngang
+      (ngang hàng với khung Hành vi giám sát bên phải), giúp lấp đầy khoảng trống bên dưới.
+    - Cột điều khiển bên phải (`col_controls`): Cấu hình AI + Hành vi giám sát.
+    """
     sample_videos = find_sample_videos()
 
-    col_sources, col_center, col_controls = st.columns([0.78, 1.75, 0.92], gap="medium")
+    col_main, col_controls = st.columns([2.32, 1.02], gap="medium")
 
     # ==========================================================================
     # CỘT PHẢI: CẤU HÌNH AI & HÀNH VI GIÁM SÁT
@@ -322,61 +338,72 @@ def render_scanner_page(raw_events: list):
                 st.rerun()
 
     # ==========================================================================
-    # CỘT TRÁI: NGUỒN CAMERA
+    # CỘT TRÁI (CHÍNH): TRÊN LÀ MÀN HÌNH QUÉT AI 16:9, DƯỚI LÀ KHUNG NGUỒN CAMERA NẰM NGANG
     # ==========================================================================
-    with col_sources:
-        with st.container(key="panel_scan_sources"):
-            st.markdown(
-                clean_html(
-                    """
-                    <div>
-                        <div class="sg-panel-title">Nguồn camera</div>
-                        <div class="sg-panel-sub" style="margin-bottom:4px;">Chọn nguồn cần giám sát</div>
-                    </div>
-                    """
-                ),
-                unsafe_allow_html=True,
-            )
+    with col_main:
+        # Khai báo thứ tự hiển thị: Màn hình quét ở trên (center_box), Nguồn camera ở dưới (sources_box)
+        center_box = st.container(key="panel_scan_center")
+        sources_box = st.container(key="panel_scan_sources")
 
-            SRC_CAM = "Hệ thống Camera công trường"
-            SRC_UP = "Tải video hoặc ảnh từ máy tính"
-            if st.session_state.get("scan_source_mode") not in (SRC_CAM, SRC_UP):
-                st.session_state.scan_source_mode = SRC_CAM
+    # 1. XỬ LÝ KHUNG NGUỒN CAMERA Ở DƯỚI TRƯỚC ĐỂ LẤY NGUỒN VIDEO / TỆP ĐANG CHỌN
+    with sources_box:
+        SRC_CAM = "Hệ thống Camera công trường"
+        SRC_UP = "Tải video hoặc ảnh từ máy tính"
+        if st.session_state.get("scan_source_mode") not in (SRC_CAM, SRC_UP):
+            st.session_state.scan_source_mode = SRC_CAM
 
-            with st.container(key="source_switch"):
-                sw1, sw2 = st.columns(2, gap="small")
-                for col, mode_val, mode_label, mode_key in (
-                    (sw1, SRC_CAM, "Hệ thống", "src_mode_cam"),
-                    (sw2, SRC_UP, "Tải tệp", "src_mode_up"),
-                ):
-                    with col:
-                        st.button(
-                            mode_label,
-                            key=mode_key,
-                            type="primary" if st.session_state.scan_source_mode == mode_val else "secondary",
-                            width="stretch",
-                            on_click=_set_scan_source_mode,
-                            args=(mode_val,),
-                        )
-            source_mode = st.session_state.scan_source_mode
-
-            selected_video_path = None
-            selected_cam_label = "Camera 01 — Khu vực 1"
-            selected_cam_short = "CAMERA 01 · KHU VỰC 1"
-            uploaded = None
-
-            if source_mode == SRC_CAM:
-                if sample_videos:
-                    cur_idx = int(st.session_state.get("scan_cam_idx", 0))
-                    if cur_idx >= len(sample_videos):
-                        cur_idx = 0
-                    thumb_css = []
-                    for i, vp in enumerate(sample_videos):
-                        thumb = _camera_thumb_uri(str(vp))
-                        if thumb:
-                            thumb_css.append(
-                                f'.st-key-camopt_{i} button::before{{background-image:url("{thumb}") !important;}}'
+        with st.container(key="scan_sources_top_bar"):
+            sh_title_col, sh_switch_col = st.columns([1.85, 1.05], gap="small", vertical_alignment="center")
+            with sh_title_col:
+                st.markdown(
+                    clean_html(
+                        """
+                        <div class="sg-sources-head-inline">
+                            <div class="sg-panel-title">Nguồn camera</div>
+                            <span class="sg-sources-head-dot">·</span>
+                            <div class="sg-panel-sub">Chọn nguồn cần giám sát</div>
+                        </div>
+                        """
+                    ),
+                    unsafe_allow_html=True,
+                )
+            with sh_switch_col:
+                with st.container(key="source_switch"):
+                    sw1, sw2 = st.columns(2, gap="small")
+                    for col, mode_val, mode_label, mode_key in (
+                        (sw1, SRC_CAM, "Hệ thống", "src_mode_cam"),
+                        (sw2, SRC_UP, "Tải tệp", "src_mode_up"),
+                    ):
+                        with col:
+                            st.button(
+                                mode_label,
+                                key=mode_key,
+                                type="primary" if st.session_state.scan_source_mode == mode_val else "secondary",
+                                width="stretch",
+                                on_click=_set_scan_source_mode,
+                                args=(mode_val,),
                             )
+
+        source_mode = st.session_state.scan_source_mode
+        selected_video_path = None
+        selected_cam_label = "Camera 01 — Khu vực 1"
+        selected_cam_short = "CAMERA 01 · KHU VỰC 1"
+        uploaded = None
+
+        if source_mode == SRC_CAM:
+            if sample_videos:
+                cur_idx = int(st.session_state.get("scan_cam_idx", 0))
+                if cur_idx >= len(sample_videos):
+                    cur_idx = 0
+                thumb_css = []
+                cam_cols = st.columns(len(sample_videos), gap="small")
+                for i, vp in enumerate(sample_videos):
+                    thumb = _camera_thumb_uri(str(vp))
+                    if thumb:
+                        thumb_css.append(
+                            f'.st-key-camopt_{i} button::before{{background-image:url("{thumb}") !important;}}'
+                        )
+                    with cam_cols[i]:
                         st.button(
                             f"**Camera {i + 1:02d}**  \nKhu vực {i + 1}  \n:green[●] Sẵn sàng",
                             key=f"camopt_{i}",
@@ -385,267 +412,284 @@ def render_scanner_page(raw_events: list):
                             on_click=_set_scan_cam_idx,
                             args=(i,),
                         )
-                    if thumb_css:
-                        st.markdown("<style>" + "".join(thumb_css) + "</style>", unsafe_allow_html=True)
-                    selected_video_path = sample_videos[cur_idx]
-                    selected_cam_label = f"Camera số {cur_idx + 1} — Khu vực {cur_idx + 1}"
-                    selected_cam_short = f"CAMERA {cur_idx + 1:02d} · KHU VỰC {cur_idx + 1}"
-                else:
-                    st.warning("Chưa có camera nào được kết nối.")
+                if thumb_css:
+                    st.markdown("<style>" + "".join(thumb_css) + "</style>", unsafe_allow_html=True)
+                selected_video_path = sample_videos[cur_idx]
+                selected_cam_label = f"Camera số {cur_idx + 1} — Khu vực {cur_idx + 1}"
+                selected_cam_short = f"CAMERA {cur_idx + 1:02d} · KHU VỰC {cur_idx + 1}"
             else:
+                st.warning("Chưa có camera nào được kết nối.")
+        else:
+            up_col_drop, up_col_info = st.columns([1.45, 1.15], gap="medium", vertical_alignment="center")
+            with up_col_drop:
                 uploaded = st.file_uploader(
                     "Chọn video từ máy tính",
                     type=["mp4", "avi", "mov", "jpg", "jpeg", "png", "webp"],
                     label_visibility="collapsed",
                     key="scan_file_uploader",
                 )
+            with up_col_info:
                 if uploaded is not None:
+                    up_name_safe = _html.escape(uploaded.name)
+                    up_kb = max(1, int(round(len(uploaded.getvalue()) / 1024)))
+                    ext_upper = Path(uploaded.name).suffix.lstrip(".").upper() or "FILE"
                     st.markdown(
-                        clean_html(f'<div class="sg-upload-note">Đã chọn: <b>{uploaded.name}</b></div>'),
+                        clean_html(
+                            f"""
+                            <div class="sg-upload-status-card active">
+                                <span class="sg-upload-pill">ĐÃ NẠP TỆP · {ext_upper}</span>
+                                <strong>{up_name_safe}</strong>
+                                <p>Dung lượng {up_kb:,} KB · Nhấn <b>Bắt đầu quét</b> trên màn hình chính để phân tích AI.</p>
+                            </div>
+                            """
+                        ),
                         unsafe_allow_html=True,
                     )
                 else:
                     st.markdown(
                         clean_html(
-                            '<div class="sg-upload-note">Chưa chọn tệp. Hãy tải video hoặc ảnh lên để kiểm tra AI.</div>'
+                            """
+                            <div class="sg-upload-status-card">
+                                <span class="sg-upload-pill">CHẾ ĐỘ KIỂM TRA TỆP</span>
+                                <strong>Chưa chọn tệp kiểm tra</strong>
+                                <p>Kéo thả hoặc nhấn vào khung bên trái để tải video (MP4, MOV, AVI) hoặc ảnh hiện trường lên kiểm tra AI.</p>
+                            </div>
+                            """
                         ),
                         unsafe_allow_html=True,
                     )
 
-    # ==========================================================================
-    # CỘT GIỮA: MÀN HÌNH QUÉT AI CHÍNH (Khung hình 16:9 ở trên, nút bấm ở dưới)
-    # ==========================================================================
-    with col_center:
-        with st.container(key="panel_scan_center"):
-            header_placeholder = st.empty()
-            video_placeholder = st.empty()
-            progress_bar = st.empty()
+    # 2. DỰNG KHUNG MÀN HÌNH QUÉT AI 16:9 Ở PHÍA TRÊN (`center_box`)
+    with center_box:
+        header_placeholder = st.empty()
+        video_placeholder = st.empty()
+        progress_bar = st.empty()
 
-            def _render_monitor_header(title_text: str, is_running: bool = False):
-                badge_cls = "sg-monitor-badge live" if is_running else "sg-monitor-badge"
-                badge_txt = "ĐANG QUÉT AI" if is_running else "BẢN XEM TRƯỚC"
-                header_placeholder.markdown(
-                    clean_html(
-                        f"""
-                        <div class="sg-monitor-heading">
-                            <div>
-                                <div class="sg-panel-title">{title_text}</div>
-                                <div class="sg-panel-sub" style="margin-bottom:4px;">Giám sát hình ảnh và trạng thái phiên quét</div>
-                            </div>
-                            <span class="{badge_cls}">{badge_txt}</span>
+        def _render_monitor_header(title_text: str, is_running: bool = False):
+            badge_cls = "sg-monitor-badge live" if is_running else "sg-monitor-badge"
+            badge_txt = "ĐANG QUÉT AI" if is_running else "BẢN XEM TRƯỚC"
+            header_placeholder.markdown(
+                clean_html(
+                    f"""
+                    <div class="sg-monitor-heading">
+                        <div>
+                            <div class="sg-panel-title">{title_text}</div>
+                            <div class="sg-panel-sub" style="margin-bottom:4px;">Giám sát hình ảnh và trạng thái phiên quét</div>
                         </div>
-                        """
-                    ),
-                    unsafe_allow_html=True,
+                        <span class="{badge_cls}">{badge_txt}</span>
+                    </div>
+                    """
+                ),
+                unsafe_allow_html=True,
+            )
+
+        def run_video_scanner(video_path_str: str, cam_name: str, cam_short_tag: str):
+            info = get_video_info(video_path_str)
+            total_fr = info["total_frames"] if info and info["total_frames"] > 0 else 100
+            fps_val = info["fps"] if info and info["fps"] > 0 else 30.0
+
+            act_c1, act_c2, act_c3 = st.columns([1.05, 0.95, 2.1], gap="small", vertical_alignment="center")
+            with act_c1:
+                start_btn = st.button(
+                    "Bắt đầu quét",
+                    type="primary",
+                    width="stretch",
+                    key=f"btn_scan_{cam_name}",
                 )
+            with act_c2:
+                stop_btn = st.button(
+                    "Dừng quét",
+                    width="stretch",
+                    key=f"btn_stop_{cam_name}",
+                )
+            with act_c3:
+                state_placeholder = st.empty()
 
-            def run_video_scanner(video_path_str: str, cam_name: str, cam_short_tag: str):
-                info = get_video_info(video_path_str)
-                total_fr = info["total_frames"] if info and info["total_frames"] > 0 else 100
-                fps_val = info["fps"] if info and info["fps"] > 0 else 30.0
+            telemetry_placeholder = st.empty()
 
-                act_c1, act_c2, act_c3 = st.columns([1.05, 0.95, 2.1], gap="small", vertical_alignment="center")
-                with act_c1:
-                    start_btn = st.button(
-                        "Bắt đầu quét",
-                        type="primary",
-                        width="stretch",
-                        key=f"btn_scan_{cam_name}",
+            if stop_btn:
+                st.session_state.scan_is_running = False
+
+            if start_btn:
+                st.session_state.scan_is_running = True
+                _render_monitor_header(cam_name, is_running=True)
+                tracker = MultiPersonTrackerAndDeduplicator()
+                auto_cnt = 0
+                human_cnt = 0
+
+                for frame_idx, frame in read_frames(video_path_str, frame_step=speed_step, max_width=720):
+                    annotated_bgr, new_viols, worker_cnt, env_info = smart_detect_and_annotate(
+                        frame,
+                        conf_threshold=ai_sensitivity,
+                        active_violation_types=active_violations,
+                        tracker=tracker,
+                        frame_idx=frame_idx,
                     )
-                with act_c2:
-                    stop_btn = st.button(
-                        "Dừng quét",
-                        width="stretch",
-                        key=f"btn_stop_{cam_name}",
-                    )
-                with act_c3:
-                    state_placeholder = st.empty()
-
-                telemetry_placeholder = st.empty()
-
-                if stop_btn:
-                    st.session_state.scan_is_running = False
-
-                if start_btn:
-                    st.session_state.scan_is_running = True
-                    _render_monitor_header(cam_name, is_running=True)
-                    tracker = MultiPersonTrackerAndDeduplicator()
-                    auto_cnt = 0
-                    human_cnt = 0
-
-                    for frame_idx, frame in read_frames(video_path_str, frame_step=speed_step, max_width=720):
-                        annotated_bgr, new_viols, worker_cnt, env_info = smart_detect_and_annotate(
-                            frame,
-                            conf_threshold=ai_sensitivity,
-                            active_violation_types=active_violations,
-                            tracker=tracker,
+                    st.session_state.last_scan_telemetry = {
+                        "worker_cnt": worker_cnt,
+                        "blur_score": env_info["blur_score"],
+                        "glare_pct": env_info["glare_pct"],
+                        "status_text": env_info["status_text"],
+                    }
+                    if new_viols:
+                        auto_list, human_list = save_new_violations_to_db(
+                            new_viols,
+                            annotated_bgr,
+                            auto_confirm_threshold=effective_auto_confirm,
+                            camera_name=cam_name,
                             frame_idx=frame_idx,
+                            fps=fps_val,
                         )
-                        st.session_state.last_scan_telemetry = {
-                            "worker_cnt": worker_cnt,
-                            "blur_score": env_info["blur_score"],
-                            "glare_pct": env_info["glare_pct"],
-                            "status_text": env_info["status_text"],
-                        }
-                        if new_viols:
-                            auto_list, human_list = save_new_violations_to_db(
-                                new_viols,
-                                annotated_bgr,
-                                auto_confirm_threshold=effective_auto_confirm,
-                                camera_name=cam_name,
-                                frame_idx=frame_idx,
-                                fps=fps_val,
-                            )
-                            auto_cnt += len(auto_list)
-                            human_cnt += len(human_list)
-                            if enable_audio:
-                                play_alert_beep()
+                        auto_cnt += len(auto_list)
+                        human_cnt += len(human_list)
+                        if enable_audio:
+                            play_alert_beep()
 
-                        ok_enc, jpg_buf = cv2.imencode(".jpg", annotated_bgr, [cv2.IMWRITE_JPEG_QUALITY, 84])
-                        frame_uri = (
-                            "data:image/jpeg;base64," + base64.b64encode(jpg_buf.tobytes()).decode("ascii")
-                            if ok_enc
-                            else ""
-                        )
-                        video_placeholder.markdown(
-                            _build_monitor_frame_html(
-                                img_uri=frame_uri,
-                                top_left_text=f"ĐANG QUÉT · FRAME #{frame_idx}",
-                                top_right_text=cam_short_tag,
-                                bottom_left_text=f"Tự xác nhận: {auto_cnt} · Chờ duyệt: {human_cnt} · {env_info['status_text']}",
-                            ),
-                            unsafe_allow_html=True,
-                        )
-                        state_placeholder.markdown(
-                            clean_html(
-                                f'<div class="sg-scan-state-text">Đang phân tích luồng video ({int(round(min(1.0, frame_idx / max(1, total_fr)) * 100))}%)</div>'
-                            ),
-                            unsafe_allow_html=True,
-                        )
-                        telemetry_placeholder.markdown(
-                            _build_telemetry_html(worker_cnt, env_info),
-                            unsafe_allow_html=True,
-                        )
-                        progress_bar.progress(min(1.0, frame_idx / max(1, total_fr)))
-
-                    st.session_state.scan_is_running = False
-                    st.toast(
-                        f"Đã quét xong {cam_name}: {auto_cnt} lỗi tự xác nhận, {human_cnt} ảnh nghi ngờ chuyển sang trang Duyệt vi phạm."
-                    )
-                    st.rerun()
-                else:
-                    _render_monitor_header(cam_name, is_running=False)
-                    b64_uri, worker_cnt, env_info = _cached_first_frame_preview(
-                        video_path_str,
-                        float(ai_sensitivity),
-                        tuple(active_violations),
+                    ok_enc, jpg_buf = cv2.imencode(".jpg", annotated_bgr, [cv2.IMWRITE_JPEG_QUALITY, 84])
+                    frame_uri = (
+                        "data:image/jpeg;base64," + base64.b64encode(jpg_buf.tobytes()).decode("ascii")
+                        if ok_enc
+                        else ""
                     )
                     video_placeholder.markdown(
                         _build_monitor_frame_html(
-                            img_uri=b64_uri,
-                            top_left_text="CHƯA CHẠY PHIÊN QUÉT",
+                            img_uri=frame_uri,
+                            top_left_text=f"ĐANG QUÉT · FRAME #{frame_idx}",
                             top_right_text=cam_short_tag,
-                            bottom_left_text=f"Khung hình xem trước · {env_info['status_text']}",
+                            bottom_left_text=f"Tự xác nhận: {auto_cnt} · Chờ duyệt: {human_cnt} · {env_info['status_text']}",
                         ),
                         unsafe_allow_html=True,
                     )
                     state_placeholder.markdown(
-                        clean_html('<div class="sg-scan-state-text">Sẵn sàng bắt đầu phiên quét</div>'),
+                        clean_html(
+                            f'<div class="sg-scan-state-text">Đang phân tích luồng video ({int(round(min(1.0, frame_idx / max(1, total_fr)) * 100))}%)</div>'
+                        ),
                         unsafe_allow_html=True,
                     )
                     telemetry_placeholder.markdown(
                         _build_telemetry_html(worker_cnt, env_info),
                         unsafe_allow_html=True,
                     )
+                    progress_bar.progress(min(1.0, frame_idx / max(1, total_fr)))
 
-            if source_mode == SRC_CAM:
-                if selected_video_path is not None:
-                    run_video_scanner(str(selected_video_path), selected_cam_label, selected_cam_short)
-                else:
-                    _render_monitor_header("Chưa kết nối Camera", is_running=False)
-                    st.info("Chưa có camera nào được kết nối. Hãy chuyển sang **Tải tệp** để kiểm tra.")
+                st.session_state.scan_is_running = False
+                st.toast(
+                    f"Đã quét xong {cam_name}: {auto_cnt} lỗi tự xác nhận, {human_cnt} ảnh nghi ngờ chuyển sang trang Duyệt vi phạm."
+                )
+                st.rerun()
             else:
-                if uploaded is not None:
-                    ext = Path(uploaded.name).suffix.lower()
-                    if ext in (".mp4", ".avi", ".mov"):
-                        tmp_dir = Path(tempfile.gettempdir()) / "safeguard_v6"
-                        tmp_dir.mkdir(parents=True, exist_ok=True)
-                        tmp_path = tmp_dir / uploaded.name
-                        tmp_path.write_bytes(uploaded.getvalue())
-                        run_video_scanner(
-                            str(tmp_path),
-                            f"Video tải lên ({uploaded.name})",
-                            "VIDEO TẢI LÊN",
+                _render_monitor_header(cam_name, is_running=False)
+                b64_uri, worker_cnt, env_info = _cached_first_frame_preview(
+                    video_path_str,
+                    float(ai_sensitivity),
+                    tuple(active_violations),
+                )
+                video_placeholder.markdown(
+                    _build_monitor_frame_html(
+                        img_uri=b64_uri,
+                        top_left_text="CHƯA CHẠY PHIÊN QUÉT",
+                        top_right_text=cam_short_tag,
+                        bottom_left_text=f"Khung hình xem trước · {env_info['status_text']}",
+                    ),
+                    unsafe_allow_html=True,
+                )
+                state_placeholder.markdown(
+                    clean_html('<div class="sg-scan-state-text">Sẵn sàng bắt đầu phiên quét</div>'),
+                    unsafe_allow_html=True,
+                )
+                telemetry_placeholder.markdown(
+                    _build_telemetry_html(worker_cnt, env_info),
+                    unsafe_allow_html=True,
+                )
+
+        if source_mode == SRC_CAM:
+            if selected_video_path is not None:
+                run_video_scanner(str(selected_video_path), selected_cam_label, selected_cam_short)
+            else:
+                _render_monitor_header("Chưa kết nối Camera", is_running=False)
+                st.info("Chưa có camera nào được kết nối. Hãy chuyển sang **Tải tệp** để kiểm tra.")
+        else:
+            if uploaded is not None:
+                ext = Path(uploaded.name).suffix.lower()
+                if ext in (".mp4", ".avi", ".mov"):
+                    tmp_dir = Path(tempfile.gettempdir()) / "safeguard_v6"
+                    tmp_dir.mkdir(parents=True, exist_ok=True)
+                    tmp_path = tmp_dir / uploaded.name
+                    tmp_path.write_bytes(uploaded.getvalue())
+                    run_video_scanner(
+                        str(tmp_path),
+                        f"Video tải lên ({uploaded.name})",
+                        "VIDEO TẢI LÊN",
+                    )
+                else:
+                    _render_monitor_header(f"Ảnh kiểm tra ({uploaded.name})", is_running=False)
+                    raw_bytes = np.asarray(bytearray(uploaded.getvalue()), dtype=np.uint8)
+                    img_bgr = cv2.imdecode(raw_bytes, cv2.IMREAD_COLOR)
+                    if img_bgr is not None:
+                        img_tracker = MultiPersonTrackerAndDeduplicator()
+                        annotated_bgr, new_viols, worker_cnt, env_info = smart_detect_and_annotate(
+                            img_bgr,
+                            conf_threshold=ai_sensitivity,
+                            active_violation_types=active_violations,
+                            tracker=img_tracker,
+                            frame_idx=1,
                         )
-                    else:
-                        _render_monitor_header(f"Ảnh kiểm tra ({uploaded.name})", is_running=False)
-                        raw_bytes = np.asarray(bytearray(uploaded.getvalue()), dtype=np.uint8)
-                        img_bgr = cv2.imdecode(raw_bytes, cv2.IMREAD_COLOR)
-                        if img_bgr is not None:
-                            img_tracker = MultiPersonTrackerAndDeduplicator()
-                            annotated_bgr, new_viols, worker_cnt, env_info = smart_detect_and_annotate(
-                                img_bgr,
-                                conf_threshold=ai_sensitivity,
-                                active_violation_types=active_violations,
-                                tracker=img_tracker,
-                                frame_idx=1,
-                            )
-                            ok_enc, jpg_buf = cv2.imencode(".jpg", annotated_bgr, [cv2.IMWRITE_JPEG_QUALITY, 88])
-                            img_uri = (
-                                "data:image/jpeg;base64," + base64.b64encode(jpg_buf.tobytes()).decode("ascii")
-                                if ok_enc
-                                else ""
-                            )
-                            video_placeholder.markdown(
-                                _build_monitor_frame_html(
-                                    img_uri=img_uri,
-                                    top_left_text=f"PHÁT HIỆN {len(new_viols)} VI PHẠM",
-                                    top_right_text="ẢNH TẢI LÊN",
-                                    bottom_left_text=env_info["status_text"],
+                        ok_enc, jpg_buf = cv2.imencode(".jpg", annotated_bgr, [cv2.IMWRITE_JPEG_QUALITY, 88])
+                        img_uri = (
+                            "data:image/jpeg;base64," + base64.b64encode(jpg_buf.tobytes()).decode("ascii")
+                            if ok_enc
+                            else ""
+                        )
+                        video_placeholder.markdown(
+                            _build_monitor_frame_html(
+                                img_uri=img_uri,
+                                top_left_text=f"PHÁT HIỆN {len(new_viols)} VI PHẠM",
+                                top_right_text="ẢNH TẢI LÊN",
+                                bottom_left_text=env_info["status_text"],
+                            ),
+                            unsafe_allow_html=True,
+                        )
+                        act_c1, act_c2 = st.columns([1.4, 2.6], gap="small", vertical_alignment="center")
+                        with act_c1:
+                            if st.button("Lưu kết quả kiểm tra ảnh này", type="primary", width="stretch"):
+                                save_new_violations_to_db(
+                                    new_viols,
+                                    annotated_bgr,
+                                    auto_confirm_threshold=effective_auto_confirm,
+                                    camera_name=f"Ảnh ({uploaded.name})",
+                                    frame_idx=1,
+                                    fps=1.0,
+                                )
+                                st.rerun()
+                        with act_c2:
+                            st.markdown(
+                                clean_html(
+                                    f'<div class="sg-scan-state-text">Đã phân tích ảnh `{uploaded.name}` ({len(new_viols)} lỗi phát hiện)</div>'
                                 ),
                                 unsafe_allow_html=True,
                             )
-                            act_c1, act_c2 = st.columns([1.4, 2.6], gap="small", vertical_alignment="center")
-                            with act_c1:
-                                if st.button("Lưu kết quả kiểm tra ảnh này", type="primary", width="stretch"):
-                                    save_new_violations_to_db(
-                                        new_viols,
-                                        annotated_bgr,
-                                        auto_confirm_threshold=effective_auto_confirm,
-                                        camera_name=f"Ảnh ({uploaded.name})",
-                                        frame_idx=1,
-                                        fps=1.0,
-                                    )
-                                    st.rerun()
-                            with act_c2:
-                                st.markdown(
-                                    clean_html(
-                                        f'<div class="sg-scan-state-text">Đã phân tích ảnh `{uploaded.name}` ({len(new_viols)} lỗi phát hiện)</div>'
-                                    ),
-                                    unsafe_allow_html=True,
-                                )
-                            st.markdown(
-                                _build_telemetry_html(worker_cnt, env_info),
-                                unsafe_allow_html=True,
-                            )
-                else:
-                    _render_monitor_header("Tải tệp kiểm tra", is_running=False)
-                    video_placeholder.markdown(
-                        _build_monitor_frame_html(
-                            img_uri="",
-                            top_left_text="CHỜ TẢI TỆP",
-                            top_right_text="CHẾ ĐỘ TẢI TỆP",
-                            bottom_left_text="Hãy chọn một tệp video hoặc ảnh ở khung Nguồn camera bên trái",
-                        ),
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(
-                        _build_telemetry_html(
-                            0,
-                            {"blur_score": 0.0, "glare_pct": 0.0, "is_blur": False, "is_glare": False},
-                        ),
-                        unsafe_allow_html=True,
-                    )
+                        st.markdown(
+                            _build_telemetry_html(worker_cnt, env_info),
+                            unsafe_allow_html=True,
+                        )
+            else:
+                _render_monitor_header("Tải tệp kiểm tra", is_running=False)
+                video_placeholder.markdown(
+                    _build_monitor_frame_html(
+                        img_uri="",
+                        top_left_text="CHỜ TẢI TỆP",
+                        top_right_text="CHẾ ĐỘ TẢI TỆP",
+                        bottom_left_text="Hãy chọn một tệp video hoặc ảnh ở khung Nguồn camera phía dưới",
+                    ),
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    _build_telemetry_html(
+                        0,
+                        {"blur_score": 0.0, "glare_pct": 0.0, "is_blur": False, "is_glare": False},
+                    ),
+                    unsafe_allow_html=True,
+                )
 
     # ==========================================================================
     # NHẬT KÝ PHIÊN QUÉT: CỤM PHÂN TRANG HIỆN ĐẠI & KHOẢNG CÁCH NÚT XUẤT FILE
@@ -738,7 +782,7 @@ def render_scanner_page(raw_events: list):
                 _, meta = load_event_evidence(eid)
                 rows_page.append({
                     "Mã số": eid,
-                    "Thời điểm phát hiện": e.get("timestamp", ""),
+                    "Thời điểm phát hiện": fmt_ts_vn(e.get("timestamp", "")),
                     "Mã công nhân": meta.get("worker_id", "CN #01"),
                     "Hành vi vi phạm": TEN_LOI_TV.get(e.get("violation_type", ""), e.get("violation_type", "")),
                     "Trạng thái": TRANG_THAI_TV.get(e.get("status", ""), e.get("status", "")),
