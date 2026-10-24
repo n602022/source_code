@@ -106,10 +106,14 @@ def main():
     _t1 = time.perf_counter()
     render_sidebar(pending_count=pending_count, total_events=len(raw_events))
 
-    # 5. Dựng Utility Bar, Topbar và các Banner trạng thái toàn cục (E-Stop, IoT, Hoàn tác)
+    # 5. Dựng Header hợp nhất 1 hàng (Tiêu đề trang bên trái | Trạng thái, Chuông, Minh An bên phải)
     active_page = st.session_state.get("active_page", "dashboard")
-    render_utility_bar(enriched_events=enriched_events, pending_events=pending_events)
-    render_topbar(page_key=active_page, db_connected=db_connected)
+    render_topbar(
+        page_key=active_page,
+        db_connected=db_connected,
+        enriched_events=enriched_events,
+        pending_events=pending_events,
+    )
     render_global_banners()
 
     # 6. Điều phối hiển thị trang chức năng đang chọn
@@ -134,13 +138,6 @@ def main():
             f"Thời gian dựng (ms) — dữ liệu & giao diện nền: {(_t1 - _t0) * 1000:.0f} · "
             f"thanh điều hướng & tiêu đề: {(_t2 - _t1) * 1000:.0f} · nội dung trang '{active_page}': {(_t3 - _t2) * 1000:.0f}"
         )
-
-    st.markdown(
-        clean_html(
-            '<div class="sg-footer-note">SAFEGUARD AI · Hệ thống Giám sát An toàn Lao động Thông minh</div>'
-        ),
-        unsafe_allow_html=True,
-    )
 
 
 if __name__ == "__main__":

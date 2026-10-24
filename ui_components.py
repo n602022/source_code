@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 ui_components.py — Các thành phần giao diện dùng chung chuẩn Prototype V2:
-- Đã tối ưu hóa điều hướng bằng cơ chế callback `on_click` chuẩn của Streamlit:
-  Khi bấm chuyển trang, đổi giao diện Sáng/Tối hoặc thu gọn/mở rộng Sidebar, trạng thái được cập nhật
-  ngay trước vòng chạy chính (1-pass execution), loại bỏ hoàn toàn việc chạy toàn bộ ứng dụng 2 lần
-  liên tiếp như khi dùng `if st.button(...): st.rerun()`.
-- Tinh chỉnh thanh tiện ích (Utility Bar): cân chỉnh lại độ dài khung hồ sơ "Minh An / Giám sát viên"
-  cân đối như ảnh mẫu và thẳng mép phải với đường kẻ ngang (`sg-utility-divider`) cùng huy hiệu trạng thái bên dưới.
+- Đã tối ưu hóa điều hướng bằng cơ chế callback `on_click` chuẩn của Streamlit (1-pass execution).
+- Gộp hai hàng đầu trang thành một hàng Header duy nhất (`render_topbar`):
+  + Bên trái: Tiêu đề trang (`<h1>`) rõ ràng, căn thẳng hàng với khối thương hiệu ở Sidebar (bỏ nhãn phụ phía trên và chữ lặp).
+  + Bên phải: Huy hiệu trạng thái hệ thống + Nút Chuông thông báo + Khung hồ sơ "Minh An / Giám sát viên" nằm gọn trên cùng 1 hàng, tiết kiệm ~90px chiều dọc.
 """
 import html as _html
 
@@ -164,33 +162,6 @@ def render_sidebar(pending_count: int | None, total_events: int):
                                 args=(mode,),
                             )
 
-                st.markdown('<div class="sg-side-label sg-side-label-gap">Trạng thái</div>', unsafe_allow_html=True)
-                estop = st.session_state.get("emergency_stop_active")
-                if estop:
-                    st.markdown(
-                        clean_html(
-                            f"""
-                            <div class="sg-status-mini">
-                                <span class="sg-dot-danger"></span>
-                                <span>DỪNG KHẨN CẤP ({estop['camera']})</span>
-                            </div>
-                            """
-                        ),
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown(
-                        clean_html(
-                            """
-                            <div class="sg-status-mini">
-                                <span class="sg-dot"></span>
-                                <span>Hệ thống trực tuyến</span>
-                            </div>
-                            """
-                        ),
-                        unsafe_allow_html=True,
-                    )
-
             st.button(
                 "Mở rộng" if collapsed else "Thu gọn",
                 key="sb_toggle_btn",
@@ -202,31 +173,71 @@ def render_sidebar(pending_count: int | None, total_events: int):
 
 
 def render_utility_bar(enriched_events: list, pending_events: list):
-    """Dựng thanh tiện ích trên đầu (Utility Bar) gồm chuông thông báo thực tế và hồ sơ Giám sát viên mẫu."""
+    """Giữ hàm tương thích API (đã gộp trực tiếp vào render_topbar để tiết kiệm chiều dọc)."""
+    return None
+
+
+def render_topbar(
+    page_key: str,
+    db_connected: bool = True,
+    enriched_events: list | None = None,
+    pending_events: list | None = None,
+):
+    """
+    Dựng Header hợp nhất trên 1 hàng duy nhất:
+    - Cột trái: Tiêu đề trang (`<h1>`) gọn gàng (bỏ nhãn nhỏ phía trên và dòng chữ lặp với Sidebar).
+    - Cột phải: Huy hiệu trạng thái hệ thống + Chuông thông báo + Khung hồ sơ "Minh An / Giám sát viên".
+    """
+    enriched_events = enriched_events or []
+    pending_events = pending_events or []
+    title, _, _ = PAGE_META.get(page_key, PAGE_META["dashboard"])
+    estop = st.session_state.get("emergency_stop_active")
+
+    if estop:
+        status_html = (
+            f'<div class="sg-top-status danger">'
+            f'<span class="sg-dot-danger"></span> DỪNG KHẨN CẤP: {estop["camera"]}'
+            f"</div>"
+        )
+    elif not db_connected:
+        status_html = (
+            '<div class="sg-top-status warn">'
+            '<span class="sg-dot"></span> MẤT KẾT NỐI DỮ LIỆU'
+            "</div>"
+        )
+    elif st.session_state.get("scan_is_running"):
+        status_html = (
+            '<div class="sg-top-status busy">'
+            '<span class="sg-dot"></span> ĐANG QUÉT'
+            "</div>"
+        )
+    else:
+        status_html = (
+            '<div class="sg-top-status">'
+            '<span class="sg-dot"></span> HỆ THỐNG SẴN SÀNG'
+            "</div>"
+        )
+
+    if pending_events:
+        st.markdown(
+            "<style>.st-key-util_bell button::after{content:\"\";position:absolute;top:7px;right:9px;"
+            "width:9px;height:9px;border-radius:50%;background:#EF4444;border:2px solid var(--surface);z-index:2;}</style>",
+            unsafe_allow_html=True,
+        )
+
     with st.container(key="util_bar_row"):
-        u_left, u_bell, u_user = st.columns([6.45, 0.42, 1.38], vertical_alignment="center", gap="small")
-        with u_left:
+        h_title, h_status, h_bell, h_user = st.columns([4.5, 1.55, 0.42, 1.38], vertical_alignment="center", gap="small")
+        with h_title:
             st.markdown(
-                clean_html(
-                    """
-                    <div class="sg-utility-brand">
-                        <strong>SAFEGUARD AI / KHÔNG GIAN LÀM VIỆC</strong>
-                        <span>Không gian làm việc Giám sát An toàn Lao động</span>
-                    </div>
-                    """
-                ),
+                clean_html(f'<div class="sg-unified-title"><h1>{title}</h1></div>'),
                 unsafe_allow_html=True,
             )
-
-        # Chấm đỏ trên chuông khi có sự kiện chờ duyệt
-        if pending_events:
+        with h_status:
             st.markdown(
-                "<style>.st-key-util_bell button::after{content:\"\";position:absolute;top:7px;right:9px;"
-                "width:9px;height:9px;border-radius:50%;background:#EF4444;border:2px solid var(--surface);z-index:2;}</style>",
+                clean_html(f'<div class="sg-unified-status-wrap">{status_html}</div>'),
                 unsafe_allow_html=True,
             )
-
-        with u_bell:
+        with h_bell:
             with st.container(key="util_bell"):
                 with st.popover("Thông báo", icon=":material/notifications:", help="Thông báo sự kiện"):
                     st.markdown("**Thông báo sự kiện**")
@@ -256,8 +267,7 @@ def render_utility_bar(enriched_events: list, pending_events: list):
                         on_click=_set_active_page,
                         args=("review",),
                     )
-
-        with u_user:
+        with h_user:
             with st.container(key="util_user"):
                 with st.popover("**Minh An**  \nGiám sát viên"):
                     st.markdown("**Minh An — Giám sát viên An toàn**")
@@ -265,52 +275,6 @@ def render_utility_bar(enriched_events: list, pending_events: list):
                     st.caption(f"Chờ duyệt: **{len(pending_events)}** · Đã xử lý: **{_n_done}**")
 
     st.markdown('<div class="sg-utility-divider"></div>', unsafe_allow_html=True)
-
-
-def render_topbar(page_key: str, db_connected: bool = True):
-    """Dựng phần tiêu đề trang (.topbar) và huy hiệu trạng thái hệ thống."""
-    title, sub, eyebrow = PAGE_META.get(page_key, PAGE_META["dashboard"])
-    estop = st.session_state.get("emergency_stop_active")
-
-    if estop:
-        status_html = (
-            f'<div class="sg-top-status danger">'
-            f'<span class="sg-dot-danger"></span> DỪNG KHẨN CẤP: {estop["camera"]}'
-            f"</div>"
-        )
-    elif not db_connected:
-        status_html = (
-            '<div class="sg-top-status warn">'
-            '<span class="sg-dot"></span> MẤT KẾT NỐI DỮ LIỆU'
-            "</div>"
-        )
-    elif st.session_state.get("scan_is_running"):
-        status_html = (
-            '<div class="sg-top-status busy">'
-            '<span class="sg-dot"></span> ĐANG QUÉT'
-            "</div>"
-        )
-    else:
-        status_html = (
-            '<div class="sg-top-status">'
-            '<span class="sg-dot"></span> HỆ THỐNG SẴN SÀNG'
-            "</div>"
-        )
-
-    st.markdown(
-        clean_html(
-            f"""
-            <div class="sg-topbar">
-                <div>
-                    <div class="sg-eyebrow">{eyebrow}</div>
-                    <h1>{title}</h1>
-                </div>
-                {status_html}
-            </div>
-            """
-        ),
-        unsafe_allow_html=True,
-    )
 
 
 def render_global_banners():

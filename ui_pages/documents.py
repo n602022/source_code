@@ -1,15 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 ui_pages/documents.py — Trang Tài liệu an toàn lao động (Safety Knowledge Base V2).
-Đã nâng cấp theo 8 nguyên tắc thiết kế UI/UX (Scannability, Hierarchy, Feedback, Context):
-- Lưu cache toàn bộ nội dung văn bản và chuỗi chuẩn hóa không dấu (`haystack`) trong RAM (`_DOCS_RAM_CACHE`),
-  giúp chuyển sang trang Tài liệu an toàn hoặc bấm lọc chủ đề phản hồi tức thì (0 đọc đĩa).
-- Bố cục 2 cột thông minh (`col_docs, col_toc = st.columns([2.35, 1.0])`):
-  + Cột trái: Danh sách văn bản quy định. Khi chưa tìm kiếm, mặc định mở sẵn Điều 1 (`idx == 0`) và thu gọn
-    các điều còn lại để giao diện gọn gàng, không phải cuộn dài; khi đang gõ từ khóa tìm kiếm, tự động mở
-    các văn bản khớp từ khóa và tô sáng (`<mark class="sg-hl">`) từ khóa ngay trong nội dung.
-  + Cột phải (`panel_docs_toc`): Mục lục tra cứu nhanh 5 Điều quy định kèm tóm tắt nội dung cốt lõi và nút
-    chuyển sang hỏi Trợ lý AI trực tiếp về quy định an toàn.
+Đã áp dụng đề xuất Nhóm 1:
+- Giữ ô tìm kiếm (tô vàng từ khóa khớp với Bước 5 Kịch bản Demo) và 6 nút lọc chủ đề có ích (căn giữa chữ hoàn hảo).
+- Bỏ huy hiệu trang trí "5 TÀI LIỆU" và bỏ cột Mục lục trùng lặp bên phải để danh sách văn bản rộng thoáng.
 """
 import html as _html
 import re
@@ -64,14 +58,6 @@ _DOCS_RAM_CACHE: list[dict] | None = None
 
 def _set_doc_topic(topic_key: str):
     st.session_state.doc_topic_filter = topic_key
-
-
-def _toggle_expand_all_docs():
-    st.session_state.docs_expand_all = not bool(st.session_state.get("docs_expand_all", False))
-
-
-def _goto_assistant_from_docs():
-    st.session_state.active_page = "chat"
 
 
 def _highlight_text_html(text: str, raw_query: str) -> str:
@@ -135,40 +121,22 @@ def _get_cached_docs() -> list[dict]:
 
 
 def render_documents_page():
-    """Hiển thị nguyên văn các tệp văn bản quy định từ bộ nhớ đệm RAM."""
+    """Hiển thị nguyên văn các tệp văn bản quy định từ bộ nhớ đệm RAM trên 1 cột rộng thoáng đãng."""
     docs_list = _get_cached_docs()
     if not docs_list:
         st.warning("Chưa có tài liệu nội quy nào.")
         return
 
-    expand_all = bool(st.session_state.get("docs_expand_all", False))
-
     # --- THANH TÌM KIẾM TÀI LIỆU (.doc-toolbar) ---
     with st.container(key="doc_toolbar_row"):
-        s_col1, s_col2, s_col3 = st.columns([3.9, 0.95, 0.72], gap="small", vertical_alignment="center")
-        with s_col1:
-            search_q = st.text_input(
-                "Tìm quy định, từ khóa hoặc chủ đề:",
-                value=st.session_state.get("doc_search_query", ""),
-                placeholder="Tìm quy định, từ khóa hoặc chủ đề…",
-                label_visibility="collapsed",
-                key="doc_search_input",
-            )
-            st.session_state.doc_search_query = search_q
-        with s_col2:
-            st.button(
-                "Thu gọn bớt" if expand_all else "Mở tất cả",
-                key="doc_toggle_expand_btn",
-                width="stretch",
-                on_click=_toggle_expand_all_docs,
-            )
-        with s_col3:
-            st.markdown(
-                clean_html(
-                    f'<div class="sg-doc-count-wrap"><span class="sg-doc-count-badge">{len(docs_list)} TÀI LIỆU</span></div>'
-                ),
-                unsafe_allow_html=True,
-            )
+        search_q = st.text_input(
+            "Tìm quy định, từ khóa hoặc chủ đề:",
+            value=st.session_state.get("doc_search_query", ""),
+            placeholder="Tìm quy định, từ khóa hoặc chủ đề…",
+            label_visibility="collapsed",
+            key="doc_search_input",
+        )
+        st.session_state.doc_search_query = search_q
 
     # --- BỘ LỌC CHỦ ĐỀ (.doc-topic-filters) ---
     cur_topic = st.session_state.get("doc_topic_filter", "all")
@@ -192,58 +160,13 @@ def render_documents_page():
         and (not norm_query or norm_query in doc["haystack"])
     ]
 
-    col_docs, col_toc = st.columns([2.32, 1.02], gap="medium")
-
-    with col_docs:
-        if matched_docs:
-            for idx, doc in enumerate(matched_docs):
-                is_open = True if (expand_all or norm_query or cur_topic != "all" or idx == 0) else False
-                with st.expander(f"{doc['title']}   ·   {doc['code']}", expanded=is_open):
-                    st.markdown(
-                        clean_html(
-                            f'<div class="sg-doc-sub-tag">Chủ đề: <b>{_html.escape(doc["sub"])}</b></div>'
-                            + _highlight_text_html(doc["content"], search_q)
-                        ),
-                        unsafe_allow_html=True,
-                    )
-        else:
-            st.info("Không có văn bản nội quy nào khớp với từ khóa hoặc chủ đề đang lọc.")
-
-    with col_toc:
-        with st.container(key="panel_docs_toc"):
-            st.markdown(
-                clean_html(
-                    """
-                    <div>
-                        <div class="sg-panel-title">Mục lục nhanh</div>
-                        <div class="sg-panel-sub" style="margin-bottom:8px;">Tóm tắt 5 quy định an toàn cốt lõi tại công trường</div>
-                    </div>
-                    """
-                ),
-                unsafe_allow_html=True,
-            )
-            for doc in docs_list:
-                is_active_topic = cur_topic == doc["category"]
-                active_cls = " active" if is_active_topic else ""
+    if matched_docs:
+        for idx, doc in enumerate(matched_docs):
+            is_open = True if (norm_query or cur_topic != "all" or idx == 0) else False
+            with st.expander(f"{doc['title']}   ·   {doc['code']}", expanded=is_open):
                 st.markdown(
-                    clean_html(
-                        f"""
-                        <div class="sg-toc-item{active_cls}">
-                            <div class="sg-toc-code">{doc['code']}</div>
-                            <div class="sg-toc-info">
-                                <strong>{_html.escape(doc['title'])}</strong>
-                                <span>{_html.escape(doc['sub'])}</span>
-                            </div>
-                        </div>
-                        """
-                    ),
+                    clean_html(_highlight_text_html(doc["content"], search_q)),
                     unsafe_allow_html=True,
                 )
-
-            st.button(
-                "Hỏi Trợ lý AI về quy định →",
-                key="docs_ask_ai_btn",
-                type="primary",
-                width="stretch",
-                on_click=_goto_assistant_from_docs,
-            )
+    else:
+        st.info("Không có văn bản nội quy nào khớp với từ khóa hoặc chủ đề đang lọc.")

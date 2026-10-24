@@ -4,17 +4,11 @@ ui_theme.py — Quản lý giao diện Sáng / Tối / Theo hệ thống và n�
 
 TỐI ƯU HÓA TỐC ĐỘ CHUYỂN TRANG & ĐỒNG BỘ GIAO DIỆN TOÀN HỆ THỐNG (PROTOTYPE V2):
 - Biên dịch trước (pre-compile) toàn bộ 6 tổ hợp <style> vào bộ nhớ đệm RAM (_STYLE_TAG_CACHE).
-- Căn ngang hàng tuyệt đối tiêu đề "Vi phạm gần đây" với nút "Xem tất cả →" (.st-key-dash_recent_header).
-- Cố định chiều cao đồng nhất cho các thẻ video sự kiện (.sg-incident-card, .sg-incident-title, .sg-incident-meta)
-  trên cả trang Tổng quan và trang Duyệt vi phạm; bổ sung nút tải xuống bằng chứng `.sg-card-dl-btn`
-  gọn đẹp ở góc dưới bên phải mỗi thẻ trên trang Duyệt vi phạm.
-- Cân chỉnh khung hồ sơ "Minh An / Giám sát viên" (`.st-key-util_user button`): tăng gấp đôi khoảng cách giữa
-  vòng tròn avatar `MA` và chữ "Minh An / Giám sát viên" (`padding-left: 56px`), giữ độ dài tổng thể hài hòa (`184px`).
-- Tái cấu trúc trang Quét AI & Camera (`panel_scan_center` ở trên + `panel_scan_sources` trải ngang ở dưới,
-  ngang hàng với khung `Hành vi giám sát` bên phải), triệt tiêu khoảng trống lớn bên dưới màn hình video.
-- Tinh chỉnh trang Trợ lý AI (`assistant_workspace_row`): 2 khung lớn (`panel_assistant` bên trái và
-  `panel_assistant_context` bên phải) luôn cao bằng nhau 100%, đồng thời tạo khoảng đệm dưới thoáng đãng
-  (`padding-bottom: 24px`) dưới 2 ô "Đã xác nhận" / "Đã loại bỏ".
+- Header hợp nhất 1 hàng (`.st-key-util_bar_row`): Tiêu đề trang `<h1>` bên trái căn thẳng hàng với khối logo Sidebar;
+  Huy hiệu trạng thái, nút Chuông thông báo và hồ sơ `Minh An / Giám sát viên` nằm gọn bên phải, tiết kiệm ~90px chiều dọc.
+- Thanh Telemetry 1 dòng thông minh (`.sg-telemetry-line`) trên trang Quét AI & Camera: hiển thị gọn số công nhân,
+  độ nét và độ lóa, tự động đổi màu cảnh báo vàng khi phát hiện khung hình mờ hoặc chói sáng.
+- Chip ngữ cảnh sự kiện (`.sg-chat-ctx-chip`) tích hợp ngay trên thanh tiêu đề khung Chat Trợ lý AI.
 - Căn giữa hoàn hảo theo trục dọc cho chữ trong 6 thẻ lọc chủ đề trên trang Tài liệu an toàn (`.st-key-doc_topic_row button`).
 """
 import re
@@ -355,8 +349,8 @@ OVERRIDE_CSS = """
     line-height: 1 !important;
 }
 
-/* Ghim cố định (Sticky) cho khung Hồ sơ thẩm định (Review) và Mục lục nhanh (Docs) */
-[data-testid="stMain"] :is(.st-key-panel_review_detail, .st-key-panel_docs_toc) {
+/* Ghim cố định (Sticky) cho khung Hồ sơ thẩm định (Review) */
+[data-testid="stMain"] .st-key-panel_review_detail {
     position: sticky !important;
     top: 18px !important;
     z-index: 4 !important;
@@ -431,18 +425,28 @@ OVERRIDE_CSS = """
     opacity: 1 !important;
 }
 
-/* ============ 3. Tiêu đề trang (.topbar) ============ */
-.sg-topbar h1 { margin: 4px 0 6px !important; padding: 0 !important; line-height: 1.2 !important; }
-.sg-topbar .sg-eyebrow { margin: 0 !important; }
-.sg-topbar .sg-sub { margin: 0 !important; }
-
-/* ============ 4. Thanh tiện ích: .icon-button + .profile-chip cân đối & cách lề phải chuẩn ============ */
+/* ============ 3 & 4. Header hợp nhất 1 hàng (.st-key-util_bar_row): Tiêu đề trái | Trạng thái + Chuông + Minh An phải ============ */
 [data-testid="stMain"] .st-key-util_bar_row {
     padding-right: 12px !important;
 }
 [data-testid="stMain"] .st-key-util_bar_row [data-testid="stHorizontalBlock"] {
     align-items: center !important;
     gap: 10px !important;
+}
+.sg-unified-title h1 {
+    font-size: 24px !important;
+    font-weight: 800 !important;
+    color: var(--text) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.01em !important;
+}
+.sg-unified-status-wrap {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    width: 100% !important;
 }
 [data-testid="stMain"] .st-key-util_bell,
 [data-testid="stMain"] .st-key-util_bell [data-testid="stPopover"],
@@ -482,7 +486,7 @@ OVERRIDE_CSS = """
 [data-testid="stMain"] .st-key-util_bell button > div > :nth-child(n+2) { display: none !important; }
 [data-testid="stMain"] .st-key-util_bell button [data-testid="stIconMaterial"] { font-size: 20px !important; margin: 0 !important; }
 
-/* Khung "Minh An / Giám sát viên": khoảng cách giữa avatar MA (left 6px + 30px = 36px) và chữ là 20px (gấp đôi 10px trước đó) */
+/* Khung "Minh An / Giám sát viên": khoảng cách giữa avatar MA (left 6px + 30px = 36px) và chữ là 20px */
 [data-testid="stMain"] .st-key-util_user button {
     width: 184px !important;
     min-width: 180px !important;
@@ -703,7 +707,7 @@ span.sg-card-dl-btn.disabled {
 [data-testid="stMain"] hr { margin: 14px 0 !important; border-color: var(--border) !important; }
 [data-testid="stMain"] h4 { font-size: 15px !important; font-weight: 780 !important; padding: 0 !important; margin: 0 0 4px !important; }
 
-/* ============ 7. Trang Quét AI: Bố cục 2 cột cân bằng (Màn hình trên + Nguồn camera trải ngang dưới) ============ */
+/* ============ 7. Trang Quét AI: Bố cục 2 cột cân bằng + Thanh Telemetry 1 dòng (.sg-telemetry-line) ============ */
 [data-testid="stMain"] :is(.st-key-panel_scan_sources, .st-key-panel_scan_center, .st-key-panel_scan_controls) {
     padding: 15px 16px !important;
     height: auto !important;
@@ -719,22 +723,6 @@ span.sg-card-dl-btn.disabled {
 /* Hàng tiêu đề + thanh chuyển nguồn nằm cùng 1 dòng trong khung Nguồn camera */
 [data-testid="stMain"] .st-key-scan_sources_top_bar [data-testid="stHorizontalBlock"] {
     align-items: center !important;
-}
-.sg-sources-head-inline {
-    display: flex !important;
-    align-items: baseline !important;
-    gap: 8px !important;
-    flex-wrap: wrap !important;
-}
-.sg-sources-head-inline .sg-panel-title {
-    margin: 0 !important;
-}
-.sg-sources-head-inline .sg-panel-sub {
-    margin: 0 !important;
-}
-.sg-sources-head-dot {
-    color: var(--muted) !important;
-    font-weight: 700 !important;
 }
 
 /* Thanh chuyển nguồn (.source-switch): Hệ thống | Tải tệp */
@@ -1060,40 +1048,60 @@ span.sg-card-dl-btn.disabled {
     line-height: 1.4 !important;
     padding-left: 4px !important;
 }
-.sg-telemetry-grid {
-    display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 9px !important;
-    margin-top: 4px !important;
-    padding-top: 9px !important;
-    border-top: 1px solid var(--border) !important;
-    align-items: stretch !important;
-}
-.sg-telemetry-item {
-    padding: 8px 11px !important;
+
+/* Thanh Telemetry 1 dòng gọn gàng dưới màn hình quét (.sg-telemetry-line) */
+.sg-telemetry-line {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    margin-top: 6px !important;
+    padding: 9px 13px !important;
+    border-radius: 9px !important;
     background: var(--surface2) !important;
     border: 1px solid var(--border) !important;
-    border-radius: 8px !important;
-    min-width: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-}
-.sg-telemetry-item span {
-    display: block !important;
-    font-size: 9.5px !important;
-    color: var(--muted) !important;
-    line-height: 1.3 !important;
-}
-.sg-telemetry-item strong {
-    display: block !important;
     font-size: 11.5px !important;
     color: var(--text) !important;
-    margin-top: 3px !important;
-    line-height: 1.35 !important;
+}
+.sg-telemetry-line.warn {
+    background: var(--warning-bg) !important;
+    border-color: var(--warning) !important;
+    color: var(--warning-text) !important;
+}
+.sg-tele-main {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    flex-wrap: wrap !important;
+}
+.sg-tele-dot {
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50% !important;
+    background: var(--success) !important;
+    flex-shrink: 0 !important;
+}
+.sg-tele-dot.warn {
+    background: var(--warning) !important;
+}
+.sg-tele-sep {
+    color: var(--muted) !important;
+    font-weight: 700 !important;
+}
+.sg-tele-metrics {
+    font-size: 11px !important;
+    color: var(--muted) !important;
     white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    font-variant-numeric: tabular-nums !important;
+}
+.sg-telemetry-line.warn .sg-tele-metrics,
+.sg-telemetry-line.warn .sg-tele-metrics b {
+    color: var(--warning-text) !important;
+}
+.sg-tele-metrics b {
+    color: var(--text) !important;
+    font-weight: 750 !important;
 }
 
 /* Khung phải (.scan-controls) */
@@ -1238,15 +1246,6 @@ span.sg-card-dl-btn.disabled {
 }
 
 /* ============ 7B. Cụm phân trang hiện đại trong Nhật ký phiên quét & Duyệt vi phạm ============ */
-[data-testid="stMain"] .st-key-scan_log_size_wrap [data-baseweb="select"] > div {
-    min-height: 34px !important;
-    height: 34px !important;
-    border-radius: 9px !important;
-    background: var(--surface2) !important;
-    border: 1px solid var(--border) !important;
-    font-size: 11.5px !important;
-    font-weight: 600 !important;
-}
 [data-testid="stMain"] :is(.st-key-scan_log_pager, .st-key-rev_card_pager) {
     background: var(--surface2) !important;
     border: 1px solid var(--border) !important;
@@ -1394,47 +1393,18 @@ span.sg-card-dl-btn.disabled {
     font-weight: 800 !important;
 }
 
-/* Khoảng cách rõ ràng giữa bảng Nhật ký phiên quét và 2 nút Xuất báo cáo / Tải bằng chứng */
 [data-testid="stMain"] .st-key-panel_scan_log {
     margin-top: 6px !important;
 }
 [data-testid="stMain"] .st-key-panel_scan_log .sg-table-wrap {
     margin-top: 10px !important;
-    margin-bottom: 14px !important;
-}
-[data-testid="stMain"] .st-key-scan_log_actions {
-    margin-top: 6px !important;
-    padding-top: 2px !important;
+    margin-bottom: 6px !important;
 }
 
 .sg-guide-box { font-size: 12px !important; line-height: 1.55 !important; padding: 10px 12px !important; }
 
-/* ============ 7C. Trang Trợ lý AI (.st-key-assistant_workspace_row, .st-key-panel_assistant & .st-key-panel_assistant_context) ============ */
-/* Cân bằng chiều cao tuyệt đối giữa khung Chat bên trái và khung Ngữ cảnh bên phải */
-[data-testid="stMain"] .st-key-assistant_workspace_row > [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] {
-    align-items: stretch !important;
-}
-[data-testid="stMain"] .st-key-assistant_workspace_row [data-testid="stColumn"] {
-    display: flex !important;
-    flex-direction: column !important;
-}
-[data-testid="stMain"] .st-key-assistant_workspace_row [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
-    flex: 1 1 auto !important;
-    display: flex !important;
-    flex-direction: column !important;
-    height: 100% !important;
-}
-[data-testid="stMain"] .st-key-assistant_workspace_row [data-testid="stColumn"] > [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:has(> :is(.st-key-panel_assistant, .st-key-panel_assistant_context)) {
-    flex: 1 1 auto !important;
-    display: flex !important;
-    flex-direction: column !important;
-    height: 100% !important;
-}
+/* ============ 7C. Trang Trợ lý AI (.st-key-panel_assistant): Khung Chat toàn chiều rộng + Chip ngữ cảnh ============ */
 [data-testid="stMain"] .st-key-panel_assistant {
-    flex: 1 1 auto !important;
-    height: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
     padding: 0 !important;
     border-radius: 16px !important;
     overflow: hidden !important;
@@ -1443,10 +1413,6 @@ span.sg-card-dl-btn.disabled {
     box-shadow: var(--shadow) !important;
 }
 [data-testid="stMain"] .st-key-panel_assistant > [data-testid="stVerticalBlock"] {
-    flex: 1 1 auto !important;
-    height: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
     gap: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -1455,41 +1421,19 @@ span.sg-card-dl-btn.disabled {
     margin: 0 !important;
     padding: 0 !important;
 }
-[data-testid="stMain"] .st-key-panel_assistant > [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:has(.st-key-chat_stream_area) {
-    flex: 1 1 auto !important;
-    display: flex !important;
-    flex-direction: column !important;
-}
-[data-testid="stMain"] .st-key-panel_assistant > [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:has(.st-key-chat_bottom_dock) {
-    margin-top: auto !important;
-}
 [data-testid="stMain"] .st-key-panel_assistant [data-testid="stMarkdownContainer"] {
     margin-bottom: 0 !important;
-}
-
-/* Khung Ngữ cảnh bên phải: cao bằng khung Chat bên trái + khoảng đệm đáy thoáng đãng dưới 2 ô Đã xác nhận / Đã loại bỏ */
-[data-testid="stMain"] .st-key-panel_assistant_context {
-    flex: 1 1 auto !important;
-    height: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    padding: 18px 20px 26px !important;
-    box-sizing: border-box !important;
-}
-[data-testid="stMain"] .st-key-panel_assistant_context > [data-testid="stVerticalBlock"] {
-    flex: 1 1 auto !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
 }
 
 .sg-chat-intro {
     display: flex !important;
     align-items: center !important;
+    justify-content: space-between !important;
     gap: 12px !important;
     padding: 18px 22px 15px !important;
     margin: 0 !important;
     border-bottom: 1px solid var(--border) !important;
+    flex-wrap: wrap !important;
 }
 .sg-chat-mark {
     width: 38px !important;
@@ -1517,53 +1461,26 @@ span.sg-card-dl-btn.disabled {
     padding: 0 !important;
     line-height: 1.4 !important;
 }
-
-/* Thẻ ngữ cảnh sự kiện & tóm tắt ca trực bên phải trang Trợ lý AI */
-.sg-chat-ctx-summary {
-    margin-top: 8px !important;
-    padding: 12px 0 6px !important;
-    border-top: 1px solid var(--border) !important;
-}
-.sg-chat-ctx-summary-title {
-    font-size: 11px !important;
-    font-weight: 750 !important;
-    color: var(--muted) !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.05em !important;
-    margin-bottom: 9px !important;
-}
-.sg-chat-ctx-grid {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 9px !important;
-}
-.sg-chat-ctx-stat {
-    padding: 9px 11px !important;
-    border-radius: 9px !important;
-    background: var(--surface2) !important;
-    border: 1px solid var(--border) !important;
-    display: flex !important;
+.sg-chat-ctx-chip {
+    display: inline-flex !important;
     align-items: center !important;
-    justify-content: space-between !important;
+    gap: 5px !important;
+    padding: 6px 12px !important;
+    border-radius: 999px !important;
+    background: var(--primary-soft) !important;
+    border: 1px solid var(--primary) !important;
+    color: var(--primary) !important;
+    font-size: 11.5px !important;
+    font-weight: 650 !important;
+    white-space: nowrap !important;
 }
-.sg-chat-ctx-stat span {
-    font-size: 11px !important;
-    color: var(--muted) !important;
-    font-weight: 500 !important;
-}
-.sg-chat-ctx-stat strong {
-    font-size: 13px !important;
+.sg-chat-ctx-chip b {
     font-weight: 800 !important;
-    color: var(--text) !important;
-    font-variant-numeric: tabular-nums !important;
 }
-.sg-chat-ctx-stat.warn strong { color: var(--warning) !important; }
-.sg-chat-ctx-stat.ok strong { color: var(--success) !important; }
 
 /* Vùng luồng hội thoại ở giữa (.st-key-chat_stream_area) */
 [data-testid="stMain"] .st-key-chat_stream_area {
-    flex: 1 1 auto !important;
-    min-height: 360px !important;
+    min-height: 340px !important;
     max-height: 520px !important;
     overflow-y: auto !important;
     padding: 20px 32px !important;
@@ -1758,38 +1675,14 @@ span.sg-card-dl-btn.disabled {
     font-weight: 700 !important;
 }
 
-/* ============ 7D. Trang Tài liệu an toàn: Thanh tìm kiếm, 6 nút chủ đề căn giữa chữ hoàn hảo & Mục lục nhanh ============ */
-[data-testid="stMain"] .st-key-doc_toolbar_row [data-testid="stHorizontalBlock"] {
-    align-items: center !important;
-}
+/* ============ 7D. Trang Tài liệu an toàn: Thanh tìm kiếm & 6 nút chủ đề căn giữa chữ hoàn hảo ============ */
 [data-testid="stMain"] .st-key-doc_toolbar_row [data-testid="stElementContainer"],
 [data-testid="stMain"] .st-key-doc_toolbar_row [data-testid="stMarkdownContainer"] {
     margin: 0 !important;
     padding: 0 !important;
 }
-.sg-doc-count-wrap {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    height: 40px !important;
-}
-.sg-doc-count-badge {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    height: 32px !important;
-    padding: 0 12px !important;
-    border-radius: 999px !important;
-    background: var(--surface2) !important;
-    border: 1px solid var(--border-strong) !important;
-    color: var(--text) !important;
-    font-size: 10.5px !important;
-    font-weight: 800 !important;
-    letter-spacing: 0.04em !important;
-    white-space: nowrap !important;
-}
 [data-testid="stMain"] .st-key-doc_topic_row {
-    margin: 4px 0 8px !important;
+    margin: 6px 0 10px !important;
 }
 [data-testid="stMain"] .st-key-doc_topic_row button {
     height: 36px !important;
@@ -1825,20 +1718,6 @@ span.sg-card-dl-btn.disabled {
     padding: 0 !important;
     transform: translateY(-1.5px) !important;
 }
-.sg-doc-sub-tag {
-    display: inline-block !important;
-    font-size: 11px !important;
-    color: var(--muted) !important;
-    background: var(--surface2) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 6px !important;
-    padding: 3px 9px !important;
-    margin-bottom: 10px !important;
-}
-.sg-doc-sub-tag b {
-    color: var(--text) !important;
-    font-weight: 700 !important;
-}
 .sg-doc-body-text {
     font-size: 13px !important;
     line-height: 1.75 !important;
@@ -1851,49 +1730,6 @@ mark.sg-doc-mark {
     padding: 1px 5px !important;
     border-radius: 4px !important;
     font-weight: 700 !important;
-}
-.sg-toc-item {
-    display: flex !important;
-    align-items: flex-start !important;
-    gap: 10px !important;
-    padding: 9px 11px !important;
-    border-radius: 9px !important;
-    background: var(--surface2) !important;
-    border: 1px solid var(--border) !important;
-    margin-bottom: 7px !important;
-}
-.sg-toc-item.active {
-    background: var(--primary-soft) !important;
-    border-color: var(--primary) !important;
-}
-.sg-toc-code {
-    font-size: 10px !important;
-    font-weight: 800 !important;
-    color: var(--primary) !important;
-    background: var(--surface) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 6px !important;
-    padding: 2px 6px !important;
-    white-space: nowrap !important;
-    margin-top: 1px !important;
-}
-.sg-toc-info {
-    min-width: 0 !important;
-    flex: 1 1 auto !important;
-}
-.sg-toc-info strong {
-    display: block !important;
-    font-size: 11.5px !important;
-    font-weight: 750 !important;
-    color: var(--text) !important;
-    line-height: 1.35 !important;
-}
-.sg-toc-info span {
-    display: block !important;
-    font-size: 10.5px !important;
-    color: var(--muted) !important;
-    line-height: 1.4 !important;
-    margin-top: 2px !important;
 }
 
 /* ============ 8. Khung ứng dụng: sidebar 236px + vùng nội dung căn giữa (theo prototype) ============ */
@@ -1951,7 +1787,7 @@ mark.sg-doc-mark {
 /* Vùng nội dung: căn giữa, tối đa 1800px, tự giãn theo độ rộng sidebar */
 [data-testid="stMainBlockContainer"], .block-container {
     max-width: 1800px !important; width: 100% !important;
-    margin: 0 auto !important; padding: 24px 30px 34px !important;
+    margin: 0 auto !important; padding: 20px 30px 34px !important;
 }
 
 /* ============ 9. Sidebar khớp prototype: lề, icon nét mảnh, chiều cao, khoảng cách ============ */
@@ -1990,7 +1826,7 @@ __NAV_ICONS__
 [data-testid="stSidebar"] .st-key-theme_switch __PRI__ p { font-weight: 800 !important; }
 [data-testid="stSidebar"] .sg-status-mini { font-size: 12px !important; gap: 8px; display: flex; align-items: center; }
 
-/* ============ 10. Hết chồng đè + căn hàng thanh tiện ích với khối thương hiệu ============ */
+/* ============ 10. Hết chồng đè + căn hàng Header với khối thương hiệu ============ */
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
 [data-testid="stSidebar"] [data-testid="stMarkdown"] { margin-bottom: 0 !important; }
 [data-testid="stMain"] [data-testid="stMarkdownContainer"]:has(> .sg-utility-divider) { margin-bottom: 0 !important; }
@@ -2002,8 +1838,7 @@ __NAV_ICONS__
 [data-testid="stSidebar"] .st-key-sb_footer { padding-top: 16px; margin-bottom: 10px; }
 [data-testid="stSidebar"] .st-key-sb_toggle_btn { margin-top: 2px; }
 
-.sg-utility-divider { height: 1px; background: var(--border); margin: 6px 12px 2px 0 !important; }
-.sg-topbar { padding-right: 12px !important; }
+.sg-utility-divider { height: 1px; background: var(--border); margin: 8px 12px 10px 0 !important; }
 
 /* ============ 11. Căn thanh Sáng/Tối/Theo hệ thống: 1 dòng, giữa nút ============ */
 [data-testid="stSidebar"] .st-key-theme_switch [data-testid="stColumn"] { min-width: 0 !important; }
@@ -2134,17 +1969,11 @@ __NAV_ICONS__
 .sg-table-empty { padding: 22px; text-align: center; color: var(--muted); border: 1px dashed var(--border-strong); border-radius: 12px; margin-bottom: 14px; }
 
 /* ============ 14. Khung nội dung (panel): nền + viền + bo góc + bóng, giống .panel của prototype ============ */
-[data-testid="stMain"] [class*="st-key-panel_"]:not(.st-key-panel_assistant):not(.st-key-panel_assistant_context) {
+[data-testid="stMain"] [class*="st-key-panel_"]:not(.st-key-panel_assistant) {
     background: var(--surface) !important;
     border: 1px solid var(--border-strong) !important;
     border-radius: 16px !important;
     padding: 18px 20px !important;
-    box-shadow: var(--shadow) !important;
-}
-[data-testid="stMain"] .st-key-panel_assistant_context {
-    background: var(--surface) !important;
-    border: 1px solid var(--border-strong) !important;
-    border-radius: 16px !important;
     box-shadow: var(--shadow) !important;
 }
 [data-testid="stMain"] [class*="st-key-subpanel_"]:not([class*="st-key-subpanel_chat_"]) {
@@ -2154,10 +1983,6 @@ __NAV_ICONS__
     padding: 14px 16px !important;
 }
 
-/* Trạng thái hệ thống: .status-mini phẳng */
-[data-testid="stSidebar"] .sg-status-mini {
-    background: transparent !important; border: 0 !important; padding: 5px 9px !important; font-size: 11px !important;
-}
 /* ============ 16. Tinh chỉnh nguyên tắc thiết kế: phản hồi, tương phản, rõ ràng ============ */
 /* Phản hồi: vòng focus rõ cho thao tác bàn phím + hiệu ứng nhấn nút */
 :is(button, summary, input, textarea, [role="button"], [data-baseweb="select"] > div):focus-visible {
@@ -2167,15 +1992,15 @@ __NAV_ICONS__
 /* Giữ nội dung trang hiện tại hiển thị đầy đủ trong lúc chờ dựng trang mới (không mờ đi gây cảm giác chậm) */
 [data-stale="true"], [data-testid="stElementContainer"][data-stale="true"] { opacity: 1 !important; transition: none !important; }
 
-/* Tương phản + nhất quán: thao tác nguy hiểm luôn mang màu đỏ, tách khỏi nút thường */
-[data-testid="stMain"] :is([class*="st-key-em_stop_"], [class*="st-key-estop_"]) button {
+/* Tương phản + nhất quán: thao tác nguy hiểm (Dừng khẩn cấp + Làm mới dữ liệu ca trực) luôn mang màu đỏ, tách khỏi nút thường */
+[data-testid="stMain"] :is([class*="st-key-em_stop_"], [class*="st-key-estop_"], .st-key-scan_btn_reset_shift) button {
     background: var(--danger-bg) !important; color: var(--danger-text) !important;
     border: 1px solid var(--danger) !important; font-weight: 700 !important;
 }
-[data-testid="stMain"] :is([class*="st-key-em_stop_"], [class*="st-key-estop_"]) button:hover {
+[data-testid="stMain"] :is([class*="st-key-em_stop_"], [class*="st-key-estop_"], .st-key-scan_btn_reset_shift) button:hover {
     background: var(--danger) !important; color: #FFFFFF !important; border-color: var(--danger) !important;
 }
-[data-testid="stMain"] :is([class*="st-key-em_stop_"], [class*="st-key-estop_"]) button :is(p, span) { color: inherit !important; }
+[data-testid="stMain"] :is([class*="st-key-em_stop_"], [class*="st-key-estop_"], .st-key-scan_btn_reset_shift) button :is(p, span) { color: inherit !important; }
 
 /* Hộp thoại xác nhận (hiển thị ngoài vùng chính nên cần tự định kiểu cho cả Sáng/Tối) */
 [data-testid="stDialog"] div[role="dialog"] {

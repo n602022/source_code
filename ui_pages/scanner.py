@@ -1,24 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 ui_pages/scanner.py — Trang Quét AI & Camera (Live Monitoring V2).
-Đã tối ưu lại bố cục tổng thể để lấp đầy khoảng trống phía dưới và cân bằng chiều cao 2 bên:
-1. Chuyển từ bố cục 3 cột lệch chiều cao sang bố cục 2 cột cân đối (`col_main, col_controls = st.columns([2.35, 1.05])`):
-   - Cột trái (`col_main`): Phía trên là khung Màn hình Giám sát AI (rộng rãi, sắc nét hơn); ngay phía dưới
-     là khung "Nguồn camera" đặt nằm ngang, ngang hàng trực tiếp với khu vực "Hành vi giám sát" bên cột phải,
-     triệt tiêu hoàn toàn khoảng trống lớn bên dưới màn hình video.
-   - Cột phải (`col_controls`): Khung "Cấu hình AI" và "Hành vi giám sát" liền mạch từ trên xuống dưới.
-2. Trong khung "Nguồn camera" nằm ngang:
-   - Thanh tiêu đề "Nguồn camera — Chọn nguồn cần giám sát" nằm cùng hàng với nút chuyển chế độ "Hệ thống | Tải tệp".
-   - Chế độ "Hệ thống": 5 camera (Camera 01..05) dàn đều thành dải 5 thẻ ngang (5 cột) với ảnh thumbnail + trạng thái.
-   - Chế độ "Tải tệp": Khung kéo-thả tệp nằm ngang bên trái kết hợp thẻ trạng thái tệp & hướng dẫn kiểm tra nhanh bên phải.
-3. Chữ "Hệ thống" và "Tải tệp" căn giữa cân đối trong thanh chuyển nguồn (.st-key-source_switch).
-4. Các công tắc bật/tắt (Toggle Switch) trong "Hành vi giám sát" luôn có nền rãnh rõ ràng cả khi chuột ở ngoài
-   lẫn khi di chuột vào trong chế độ tối và sáng, đồng thời thẳng hàng dọc sát lề phải.
-5. Cụm phân trang trong "Nhật ký phiên quét" (.st-key-scan_log_pager) thiết kế dạng thanh pill hiện đại, gọn gàng,
-   tách rời thoáng đãng với 2 nút "Xuất file báo cáo (.CSV)" và "Tải gói ảnh bằng chứng (.ZIP)".
+Đã áp dụng các đề xuất tinh gọn đúng & tốt mà không ảnh hưởng đến Báo cáo Word:
+1. Giữ hiển thị trực tiếp 2 thanh trượt (`Độ nhạy phát hiện`, `Ngưỡng tự xác nhận`), `Tốc độ quét` và `Quy tắc phân luồng`
+   trong khung `Cấu hình AI` để khớp 100% với Chương 2, Chương 3, Chương 4 và Chương 6 của Báo cáo Word.
+2. Gộp 3 thẻ Telemetry dưới màn hình quét thành một thanh trạng thái 1 dòng gọn gàng (`02 công nhân · Độ nét ổn định (671.0) · Ánh sáng bình thường (0.0%)`), tự động đổi sang tông vàng cảnh báo khi phát hiện khung hình mờ hoặc chói sáng.
+3. Chuyển nút `Làm mới dữ liệu ca trực` xuống góc phải tiêu đề khung `Nhật ký phiên quét` (đúng ngữ cảnh dữ liệu)
+   và thêm hộp thoại xác nhận `@st.dialog` để ngăn bấm nhầm xóa mất dữ liệu ca trực.
+4. Lược bỏ hộp chọn `10 dòng / trang` trong Nhật ký phiên quét, chỉ giữ thanh chuyển trang `‹ Trước | Trang X / Y | Sau ›`.
 """
 import base64
-import datetime
 import html as _html
 import math
 import tempfile
@@ -33,11 +24,9 @@ from core_logic import (
     MultiPersonTrackerAndDeduplicator,
     TEN_LOI_TV,
     TRANG_THAI_TV,
-    build_evidence_zip_bytes,
-    build_shift_csv_bytes,
     clean_html,
     find_sample_videos,
-     fmt_ts_vn,
+    fmt_ts_vn,
     get_active_violation_types,
     get_effective_auto_confirm,
     load_event_evidence,
@@ -48,6 +37,8 @@ from core_logic import (
 )
 from ui_components import render_data_table
 from video_processor import get_video_info, read_frames
+
+SCAN_LOG_PAGE_SIZE = 8
 
 
 def _set_scan_source_mode(mode_val: str):
@@ -63,8 +54,23 @@ def _change_scan_log_page(delta: int, max_page: int):
     st.session_state.scan_log_page = max(1, min(max_page, cur + delta))
 
 
-def _on_scan_log_size_change():
-    st.session_state.scan_log_page = 1
+@st.dialog("Xác nhận làm mới dữ liệu ca trực")
+def _confirm_reset_shift_dialog(total_events: int):
+    """Hộp thoại xác nhận trước khi xóa toàn bộ dữ liệu sự kiện và ảnh bằng chứng của ca trực."""
+    st.markdown(
+        f"Bạn có chắc chắn muốn xóa toàn bộ **{total_events} sự kiện** và ảnh bằng chứng của ca trực hiện tại để bắt đầu ca mới không? "
+        f"Thao tác này không thể hoàn tác."
+    )
+    c_cancel, c_ok = st.columns(2, gap="small")
+    with c_cancel:
+        if st.button("Hủy", width="stretch", key="dlg_reset_cancel"):
+            st.rerun()
+    with c_ok:
+        with st.container(key="dlg_confirm_wrap"):
+            if st.button("Xác nhận làm mới", type="primary", width="stretch", key="dlg_reset_ok"):
+                reset_shift_data()
+                st.session_state.scan_log_page = 1
+                st.rerun()
 
 
 @st.cache_data(show_spinner=False)
@@ -165,29 +171,32 @@ def _build_monitor_frame_html(
 
 
 def _build_telemetry_html(worker_cnt: int, env_info: dict) -> str:
-    """Dựng 3 thẻ thông số Telemetry ở đáy khung màn hình quét với nội dung súc tích, cao bằng nhau."""
+    """
+    Gộp thông số Telemetry dưới màn hình quét thành 1 thanh trạng thái ngang gọn gàng:
+    - Bình thường: hiển thị số công nhân + 'Hình ảnh & ánh sáng ổn định' kèm chỉ số độ nét/độ lóa.
+    - Khi bị mờ hoặc lóa sáng: đổi sang tông vàng cảnh báo và nêu rõ lý do.
+    """
     blur_val = float(env_info.get("blur_score", 0.0))
     glare_val = float(env_info.get("glare_pct", 0.0))
-    is_blur = bool(env_info.get("is_blur", blur_val < 45.0))
-    is_glare = bool(env_info.get("is_glare", glare_val >= 5.5))
+    is_blur = bool(env_info.get("is_blur", False))
+    is_glare = bool(env_info.get("is_glare", False))
+    status_txt = str(env_info.get("status_text", "Ánh sáng và độ nét ổn định"))
 
-    quality_label = f"Khung mờ ({blur_val:.0f})" if is_blur else f"Ổn định ({blur_val:.0f})"
-    light_label = f"Chói sáng ({glare_val:.1f}%)" if is_glare else f"Bình thường ({glare_val:.1f}%)"
+    is_warn = is_blur or is_glare
+    bar_cls = "sg-telemetry-line warn" if is_warn else "sg-telemetry-line"
+    dot_cls = "sg-tele-dot warn" if is_warn else "sg-tele-dot"
 
     return clean_html(
         f"""
-        <div class="sg-telemetry-grid">
-            <div class="sg-telemetry-item">
-                <span>Đối tượng trong khung</span>
-                <strong>{worker_cnt:02d} công nhân</strong>
+        <div class="{bar_cls}">
+            <div class="sg-tele-main">
+                <span class="{dot_cls}"></span>
+                <strong>{worker_cnt:02d} công nhân trong khung</strong>
+                <span class="sg-tele-sep">·</span>
+                <span>{status_txt}</span>
             </div>
-            <div class="sg-telemetry-item">
-                <span>Chất lượng khung hình</span>
-                <strong>{quality_label}</strong>
-            </div>
-            <div class="sg-telemetry-item">
-                <span>Điều kiện ánh sáng</span>
-                <strong>{light_label}</strong>
+            <div class="sg-tele-metrics">
+                Độ nét: <b>{blur_val:.0f}</b> · Độ lóa: <b>{glare_val:.1f}%</b>
             </div>
         </div>
         """
@@ -197,8 +206,7 @@ def _build_telemetry_html(worker_cnt: int, env_info: dict) -> str:
 def render_scanner_page(raw_events: list):
     """
     Hiển thị trang Quét AI & Camera theo bố cục 2 cột cân bằng chiều cao:
-    - Cột chính bên trái (`col_main`): Trên là Màn hình Giám sát AI 16:9 cỡ lớn, dưới là dải Nguồn Camera nằm ngang
-      (ngang hàng với khung Hành vi giám sát bên phải), giúp lấp đầy khoảng trống bên dưới.
+    - Cột chính bên trái (`col_main`): Trên là Màn hình Giám sát AI 16:9 cỡ lớn, dưới là dải Nguồn Camera nằm ngang.
     - Cột điều khiển bên phải (`col_controls`): Cấu hình AI + Hành vi giám sát.
     """
     sample_videos = find_sample_videos()
@@ -211,14 +219,7 @@ def render_scanner_page(raw_events: list):
     with col_controls:
         with st.container(key="panel_scan_controls"):
             st.markdown(
-                clean_html(
-                    """
-                    <div>
-                        <div class="sg-panel-title">Cấu hình AI</div>
-                        <div class="sg-panel-sub" style="margin-bottom:6px;">Thiết lập ngưỡng nhận diện và phân luồng tự động.</div>
-                    </div>
-                    """
-                ),
+                clean_html('<div class="sg-panel-title" style="margin-bottom:2px;">Cấu hình AI</div>'),
                 unsafe_allow_html=True,
             )
 
@@ -333,15 +334,10 @@ def render_scanner_page(raw_events: list):
             st.session_state.enable_audio = enable_audio
             active_violations = get_active_violation_types()
 
-            if st.button("Làm mới dữ liệu ca trực", width="stretch", key="scan_btn_reset_shift"):
-                reset_shift_data()
-                st.rerun()
-
     # ==========================================================================
     # CỘT TRÁI (CHÍNH): TRÊN LÀ MÀN HÌNH QUÉT AI 16:9, DƯỚI LÀ KHUNG NGUỒN CAMERA NẰM NGANG
     # ==========================================================================
     with col_main:
-        # Khai báo thứ tự hiển thị: Màn hình quét ở trên (center_box), Nguồn camera ở dưới (sources_box)
         center_box = st.container(key="panel_scan_center")
         sources_box = st.container(key="panel_scan_sources")
 
@@ -356,15 +352,7 @@ def render_scanner_page(raw_events: list):
             sh_title_col, sh_switch_col = st.columns([1.85, 1.05], gap="small", vertical_alignment="center")
             with sh_title_col:
                 st.markdown(
-                    clean_html(
-                        """
-                        <div class="sg-sources-head-inline">
-                            <div class="sg-panel-title">Nguồn camera</div>
-                            <span class="sg-sources-head-dot">·</span>
-                            <div class="sg-panel-sub">Chọn nguồn cần giám sát</div>
-                        </div>
-                        """
-                    ),
+                    clean_html('<div class="sg-panel-title" style="margin:0;">Nguồn camera</div>'),
                     unsafe_allow_html=True,
                 )
             with sh_switch_col:
@@ -471,11 +459,8 @@ def render_scanner_page(raw_events: list):
             header_placeholder.markdown(
                 clean_html(
                     f"""
-                    <div class="sg-monitor-heading">
-                        <div>
-                            <div class="sg-panel-title">{title_text}</div>
-                            <div class="sg-panel-sub" style="margin-bottom:4px;">Giám sát hình ảnh và trạng thái phiên quét</div>
-                        </div>
+                    <div class="sg-monitor-heading" style="align-items:center;">
+                        <div class="sg-panel-title" style="margin:0;">{title_text}</div>
                         <span class="{badge_cls}">{badge_txt}</span>
                     </div>
                     """
@@ -686,23 +671,19 @@ def render_scanner_page(raw_events: list):
                 st.markdown(
                     _build_telemetry_html(
                         0,
-                        {"blur_score": 0.0, "glare_pct": 0.0, "is_blur": False, "is_glare": False},
+                        {"blur_score": 0.0, "glare_pct": 0.0, "is_blur": False, "is_glare": False, "status_text": "Chưa có tín hiệu khung hình"},
                     ),
                     unsafe_allow_html=True,
                 )
 
     # ==========================================================================
-    # NHẬT KÝ PHIÊN QUÉT: CỤM PHÂN TRANG HIỆN ĐẠI & KHOẢNG CÁCH NÚT XUẤT FILE
+    # NHẬT KÝ PHIÊN QUÉT: ĐƯA NÚT LÀM MỚI DỮ LIỆU CA TRỰC (KÈM XÁC NHẬN) VỀ ĐÚNG NGỮ CẢNH
     # ==========================================================================
     with st.container(key="panel_scan_log"):
         total_logs = len(raw_events)
 
         if total_logs > 0:
-            page_size_options = [10, 20, 50]
-            cur_page_size = int(st.session_state.get("scan_log_page_size", 10))
-            if cur_page_size not in page_size_options:
-                cur_page_size = 10
-
+            cur_page_size = SCAN_LOG_PAGE_SIZE
             max_page = max(1, math.ceil(total_logs / cur_page_size))
             cur_page = int(st.session_state.get("scan_log_page", 1))
             cur_page = max(1, min(max_page, cur_page))
@@ -711,8 +692,8 @@ def render_scanner_page(raw_events: list):
             start_idx = (cur_page - 1) * cur_page_size
             end_idx = min(total_logs, start_idx + cur_page_size)
 
-            hdr_left, hdr_size, hdr_pager = st.columns(
-                [3.15, 0.95, 1.35],
+            hdr_left, hdr_pager, hdr_reset = st.columns(
+                [3.0, 1.35, 1.15],
                 gap="small",
                 vertical_alignment="center",
             )
@@ -723,28 +704,13 @@ def render_scanner_page(raw_events: list):
                         <div>
                             <div class="sg-panel-title">Nhật ký phiên quét</div>
                             <div class="sg-panel-sub" style="margin-bottom:2px;">
-                                Hiển thị <b>{start_idx + 1}–{end_idx}</b> trong tổng số <b>{total_logs}</b> sự kiện ghi nhận
+                                Hiển thị <b>{start_idx + 1}–{end_idx}</b> / <b>{total_logs}</b> sự kiện ghi nhận
                             </div>
                         </div>
                         """
                     ),
                     unsafe_allow_html=True,
                 )
-            with hdr_size:
-                with st.container(key="scan_log_size_wrap"):
-                    chosen_size = st.selectbox(
-                        "Số dòng hiển thị",
-                        options=page_size_options,
-                        format_func=lambda n: f"{n} dòng / trang",
-                        index=page_size_options.index(cur_page_size),
-                        label_visibility="collapsed",
-                        key="scan_log_page_size_select",
-                        on_change=_on_scan_log_size_change,
-                    )
-                    if chosen_size != cur_page_size:
-                        st.session_state.scan_log_page_size = int(chosen_size)
-                        st.session_state.scan_log_page = 1
-                        st.rerun()
             with hdr_pager:
                 with st.container(key="scan_log_pager"):
                     p_prev, p_info, p_next = st.columns([0.9, 1.15, 0.9], gap="small", vertical_alignment="center")
@@ -773,8 +739,10 @@ def render_scanner_page(raw_events: list):
                             on_click=_change_scan_log_page,
                             args=(1, max_page),
                         )
+            with hdr_reset:
+                if st.button("Làm mới dữ liệu ca trực", width="stretch", key="scan_btn_reset_shift"):
+                    _confirm_reset_shift_dialog(total_logs)
 
-            # Chỉ xử lý và dựng bảng cho đúng các dòng thuộc trang hiện tại (tối đa 10/20/50 dòng)
             page_slice = raw_events[start_idx:end_idx]
             rows_page = []
             for e in page_slice:
@@ -798,25 +766,3 @@ def render_scanner_page(raw_events: list):
         else:
             st.markdown('<div class="sg-panel-title">Nhật ký phiên quét</div>', unsafe_allow_html=True)
             st.info("Chưa có dữ liệu vi phạm.")
-
-        with st.container(key="scan_log_actions"):
-            ex_col1, ex_col2, _ex_gap = st.columns([1.2, 1.5, 3.3], gap="small")
-            with ex_col1:
-                st.download_button(
-                    label="Xuất file báo cáo (.CSV)",
-                    data=build_shift_csv_bytes(raw_events),
-                    file_name=f"Bao_Cao_Vi_Pham_Ca_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                    mime="text/csv",
-                    width="stretch",
-                    type="primary",
-                    key="scan_dl_csv",
-                )
-            with ex_col2:
-                st.download_button(
-                    label="Tải gói ảnh bằng chứng (.ZIP)",
-                    data=build_evidence_zip_bytes(raw_events),
-                    file_name=f"Bang_Chung_Vi_Pham_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.zip",
-                    mime="application/zip",
-                    width="stretch",
-                    key="scan_dl_zip",
-                )

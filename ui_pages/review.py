@@ -1,20 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 ui_pages/review.py — Trang Duyệt vi phạm & Điều khiển khẩn cấp Đội trưởng (Review Queue V2).
-Đã nâng cấp theo 8 nguyên tắc thiết kế UI/UX:
-- Đồng bộ chiều cao các thẻ video vi phạm: rút gọn dòng thông tin nguồn thành "Camera khu vực X" /
-  "Video tải lên" / "Ảnh tải lên" kèm ngày giờ và % AI nhận diện; dựng theo từng hàng 2 cột để không bị lệch.
-- Bổ sung nút tải xuống bằng chứng (`.sg-card-dl-btn`) ngay ở góc dưới bên phải mỗi thẻ sự kiện (ngang hàng
-  với thông tin nguồn và ngày giờ), tự động lấy đúng đuôi file thực tế từ thuật toán (`ev["img_path"].suffix`).
-- Thanh điều hướng phân trang hiện đại ở dưới danh sách thẻ: cố định 6 video / trang, căn giữa hoàn hảo
-  dòng chữ "Hiển thị X–Y / N video" ngang hàng với cụm nút chuyển trang (‹, 1, 2, ... ›).
-- Bối cảnh điều khiển & Giảm tải nhận thức:
-  + Khung `Hồ sơ thẩm định` bên phải được ghim cố định (`position: sticky; top: 18px`) khi cuộn danh sách thẻ,
-    kèm liên kết chuyển nhanh sang hỏi Trợ lý AI về đúng sự kiện đang xem.
-  + Khi xem một sự kiện đã duyệt (`confirmed` / `false_positive`), nút "Đưa lại về Chờ duyệt" đặt ngay trong
-    khung `Hồ sơ thẩm định` (đúng ngữ cảnh đối tượng).
-  + Bảng `Lịch sử sự kiện đã duyệt` ở cuối trang được thu gọn gọn gàng trong một ngăn kéo (`st.expander`),
-    giúp màn hình làm việc chính luôn thoáng đãng và tập trung.
+Đã áp dụng các đề xuất tinh gọn đúng & tốt:
+- Bỏ khung "Điều khiển khẩn cấp · Mã #..." (ca gần nhất) bị trùng ở cột trái khi hết ca chờ duyệt, vì cột phải (`Hồ sơ thẩm định`) luôn hiển thị đầy đủ ảnh bằng chứng và 2 nút `Gửi loa nhắc nhở` / `Dừng khẩn cấp dây chuyền`.
+- Thêm hộp thoại xác nhận `@st.dialog` cho nút `Duyệt tất cả (N)` để đảm bảo nguyên tắc Human-in-the-Loop (ngăn bấm nhầm duyệt hàng loạt khi chưa kiểm tra).
+- Giữ bảng `Lịch sử sự kiện đã duyệt` gọn gàng trong ngăn kéo ở cuối trang (đã bỏ phần sửa trạng thái trùng lặp).
 """
 import datetime
 import math
@@ -25,11 +15,8 @@ import streamlit as st
 
 from chatbot import GIAI_THICH_LOI_VI_PHAM
 from core_logic import (
-    TEN_LOI_TV,
-    TRANG_THAI_TV,
     clean_html,
     image_to_base64_uri,
-    load_event_evidence,
     record_iot_action,
     render_evidence_img_or_placeholder,
     update_event_status,
@@ -81,8 +68,7 @@ def _format_card_source(cam_raw: str | None) -> str:
 def _build_card_download_html(img_path, event_id: int) -> str:
     """
     Tạo nút tải xuống 1-click ở góc phải dưới của thẻ sự kiện (.sg-card-dl-btn):
-    - Tự động lấy đúng đuôi file thực tế do thuật toán lưu (ví dụ: .jpg từ save_new_violations_to_db
-      hoặc bất kỳ định dạng ảnh/video nào của tệp bằng chứng).
+    - Tự động lấy đúng đuôi file thực tế do thuật toán lưu.
     - Sử dụng độ phân giải gốc (max_width=0) để tệp tải về đạt chất lượng nguyên bản 100%.
     """
     if img_path is None:
@@ -139,6 +125,26 @@ def _ask_ai_about_event(event_id: int):
     """Chuyển sang trang Trợ lý AI với ngữ cảnh được ghim sẵn vào sự kiện đang thẩm định."""
     st.session_state.selected_review_event_id = int(event_id)
     st.session_state.active_page = "chat"
+
+
+@st.dialog("Xác nhận duyệt hàng loạt")
+def _confirm_bulk_approve_dialog(pending_ids: list[int]):
+    """Hộp thoại xác nhận trước khi xác nhận hàng loạt toàn bộ sự kiện đang chờ duyệt."""
+    st.markdown(
+        f"Bạn có chắc chắn muốn xác nhận toàn bộ **{len(pending_ids)} sự kiện** đang chờ duyệt là **Vi phạm thật** không? "
+        f"Hãy đảm bảo bạn đã rà soát các ảnh bằng chứng trên danh sách."
+    )
+    c_cancel, c_ok = st.columns(2, gap="small")
+    with c_cancel:
+        if st.button("Hủy", width="stretch", key="dlg_bulk_cancel"):
+            st.rerun()
+    with c_ok:
+        if st.button("Xác nhận duyệt tất cả", type="primary", width="stretch", key="dlg_bulk_ok"):
+            for eid in pending_ids:
+                update_event_status(int(eid), "confirmed")
+            if pending_ids:
+                st.session_state.last_reviewed_action = {"event_id": int(pending_ids[0]), "new_status": "confirmed"}
+            st.rerun()
 
 
 @st.dialog("Xác nhận dừng khẩn cấp")
@@ -229,9 +235,7 @@ def render_review_page(raw_events: list, enriched_events: list):
     with rt_bulk:
         if pending_events:
             if st.button(f"Duyệt tất cả ({pending_count})", type="primary", width="stretch", key="rev_bulk_confirm_btn"):
-                for ev in pending_events:
-                    update_event_status(int(ev["event_id"]), "confirmed")
-                st.rerun()
+                _confirm_bulk_approve_dialog([int(ev["event_id"]) for ev in pending_events])
 
     if cur_tab == "pending":
         visible_events = pending_events
@@ -257,7 +261,6 @@ def render_review_page(raw_events: list, enriched_events: list):
                 selected_idx = idx_ev
                 break
 
-    # Nếu vừa chuyển từ trang Dashboard sang ("Thẩm định #ID"), tự động nhảy tới trang chứa thẻ đó
     if st.session_state.get("rev_locate_selected", False) and selected_idx is not None:
         st.session_state.rev_card_page = (selected_idx // cur_page_size) + 1
         st.session_state.rev_locate_selected = False
@@ -378,45 +381,14 @@ def render_review_page(raw_events: list, enriched_events: list):
             st.markdown(
                 clean_html(
                     """
-                    <div class="sg-panel" style="text-align:center;padding:28px 18px;">
+                    <div class="sg-panel" style="text-align:center;padding:34px 18px;">
                         <div class="sg-panel-title">Không có sự kiện trong nhóm trạng thái này</div>
+                        <div class="sg-panel-sub" style="margin-top:6px;">Bạn có thể chuyển sang tab Đã xác nhận / Tất cả hoặc điều khiển trực tiếp hồ sơ bên phải.</div>
                     </div>
                     """
                 ),
                 unsafe_allow_html=True,
             )
-
-            # Bảo toàn Bảng Điều Khiển Khẩn Cấp Đội Trưởng cho ca xác nhận gần nhất khi hết ca chờ duyệt
-            if cur_tab == "pending" and confirmed_events:
-                latest_conf = confirmed_events[0]
-                lc_id = int(latest_conf["event_id"])
-                lc_img, lc_meta = load_event_evidence(lc_id)
-                lc_cam = lc_meta.get("camera", "Camera số 1")
-                lc_wk = lc_meta.get("worker_id", "CN #01")
-                lc_name = TEN_LOI_TV.get(latest_conf["violation_type"], latest_conf["violation_type"])
-                with st.container(key="panel_review_emergency"):
-                    st.markdown(f"#### Điều khiển khẩn cấp · Mã #{lc_id} — {lc_name}")
-                    if lc_img is not None:
-                        st.image(str(lc_img), caption=f"Ảnh bằng chứng Mã #{lc_id} tại {lc_cam}", width="stretch")
-                    else:
-                        st.info("Chưa có ảnh bằng chứng cho ca này.")
-                    st.markdown(
-                        f"- **Vị trí phát hiện:** `{lc_cam}` | **Công nhân:** `{lc_wk}`\n"
-                        f"- **Thời điểm:** `{latest_conf['timestamp_vn']}`\n"
-                        f"- **Lệnh IoT đã gửi:** `{lc_meta.get('iot_action', 'Chưa kích hoạt')}`"
-                    )
-                    em_b1, em_b2 = st.columns(2, gap="small")
-                    with em_b1:
-                        if st.button("Gửi loa nhắc nhở", type="primary", width="stretch", key=f"em_spk_{lc_id}"):
-                            record_iot_action(lc_id, "Đã gửi loa nhắc nhở")
-                            st.session_state.iot_action_banner = {
-                                "type": "speaker",
-                                "msg": f"Đã phát loa nhắc nhở tại {lc_cam} đối với {lc_wk} (Mã sự kiện #{lc_id}).",
-                            }
-                            st.rerun()
-                    with em_b2:
-                        if st.button("Dừng khẩn cấp dây chuyền", width="stretch", key=f"em_stop_{lc_id}"):
-                            _confirm_estop_dialog(lc_id, lc_cam, lc_wk, False)
 
     # ==========================================================================
     # CỘT PHẢI: HỒ SƠ THẨM ĐỊNH CHI TIẾT (STICKY) & LỆNH KHẨN CẤP ĐỘI TRƯỞNG
@@ -574,48 +546,11 @@ def render_review_page(raw_events: list, enriched_events: list):
                 st.info("Chưa có sự kiện nào.")
 
     # ==========================================================================
-    # NGĂN KÉO LỊCH SỬ SỰ KIỆN ĐÃ DUYỆT & CHỈNH SỬA TRẠNG THÁI NHANH (GIẢM TẢI NHẬN THỨC)
+    # NGĂN KÉO LỊCH SỬ SỰ KIỆN ĐÃ DUYỆT (CHỈ GIỮ BẢNG TRA CỨU GỌN GÀNG)
     # ==========================================================================
     reviewed_enriched = [e for e in enriched_events if e.get("status") != "pending"]
-    with st.expander(f"Lịch sử sự kiện đã duyệt & Đổi lại trạng thái ({len(reviewed_enriched)} sự kiện)", expanded=False):
+    with st.expander(f"Lịch sử sự kiện đã duyệt ({len(reviewed_enriched)} sự kiện)", expanded=False):
         if reviewed_enriched:
-            fix_c1, fix_c2, fix_c3, fix_c4 = st.columns([2.1, 1.0, 1.0, 1.0], gap="small")
-            rev_map = {
-                f"Mã #{e['event_id']} — {e['title_tv']} | Hiện tại: {e['status_tv']} ({e['timestamp_vn']})": e
-                for e in reviewed_enriched
-            }
-            with fix_c1:
-                chosen_fix_label = st.selectbox("Chọn sự kiện cần đổi lại trạng thái:", list(rev_map.keys()))
-                target_fix_ev = rev_map[chosen_fix_label]
-                target_fix_id = int(target_fix_ev["event_id"])
-            with fix_c2:
-                st.write("")
-                st.button(
-                    "Sửa thành: Vi phạm thật",
-                    width="stretch",
-                    key="btn_fix_to_true",
-                    on_click=_decide_event,
-                    args=(target_fix_id, "confirmed"),
-                )
-            with fix_c3:
-                st.write("")
-                st.button(
-                    "Sửa thành: Báo nhầm",
-                    width="stretch",
-                    key="btn_fix_to_false",
-                    on_click=_decide_event,
-                    args=(target_fix_id, "false_positive"),
-                )
-            with fix_c4:
-                st.write("")
-                st.button(
-                    "Đưa về: Chờ duyệt",
-                    width="stretch",
-                    key="btn_fix_to_pending",
-                    on_click=_decide_event,
-                    args=(target_fix_id, "pending"),
-                )
-
             df_hist = pd.DataFrame([
                 {
                     "Mã số": e["event_id"],
