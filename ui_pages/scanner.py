@@ -73,9 +73,25 @@ def _confirm_reset_shift_dialog(total_events: int):
                 st.rerun()
 
 
+def _normalize_scan_frame(frame):
+    """
+    Chuẩn hóa kích thước khung hình cho video dọc (như Camera số 3):
+    Nếu khung hình dọc quá cao (h > w và h > 640), thu nhỏ tỷ lệ về chiều cao 640px để nhãn chữ
+    và khung bounding box rõ nét, đồng thời tăng tốc độ nhận diện YOLOv8.
+    """
+    if frame is None:
+        return frame
+    h, w = frame.shape[:2]
+    if h > w and h > 640:
+        scale = 640.0 / float(h)
+        new_w = max(1, int(round(w * scale)))
+        return cv2.resize(frame, (new_w, 640), interpolation=cv2.INTER_AREA)
+    return frame
+
+
 @st.cache_data(show_spinner=False)
-def _camera_thumb_uri(path_str: str) -> str:
-    """Ảnh xem trước 16:10 (cắt giữa) lấy từ một khung hình của video, trả về data-URI."""
+def _camera_thumb_uri(path_str: str, v_tag: int = 2) -> str:
+    """Ảnh xem trước 16:10 lấy từ một khung hình của video; nếu là video dọc thì đặt giữa nền mờ để không bị cắt ngang."""
     try:
         cap = cv2.VideoCapture(path_str)
         total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
@@ -87,16 +103,24 @@ def _camera_thumb_uri(path_str: str) -> str:
             return ""
         h, w = frame.shape[:2]
         target = 16 / 10
-        if w / h > target:
+        if h > w:
+            bg = cv2.resize(frame, (160, 100), interpolation=cv2.INTER_LINEAR)
+            bg = cv2.GaussianBlur(bg, (25, 25), 0)
+            bg = (bg.astype(np.float32) * 0.42).astype(np.uint8)
+            fg_w = max(1, min(160, int(round(w * (100.0 / float(h))))))
+            fg = cv2.resize(frame, (fg_w, 100), interpolation=cv2.INTER_AREA)
+            x0 = (160 - fg_w) // 2
+            bg[:, x0:x0 + fg_w] = fg
+            frame = bg
+        elif w / h > target:
             new_w = int(h * target)
             x0 = (w - new_w) // 2
-            frame = frame[:, x0:x0 + new_w]
+            frame = cv2.resize(frame[:, x0:x0 + new_w], (160, 100), interpolation=cv2.INTER_AREA)
         else:
             new_h = int(w / target)
             y0 = (h - new_h) // 2
-            frame = frame[y0:y0 + new_h, :]
-        frame = cv2.resize(frame, (160, 100), interpolation=cv2.INTER_AREA)
-        ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 72])
+            frame = cv2.resize(frame[y0:y0 + new_h, :], (160, 100), interpolation=cv2.INTER_AREA)
+        ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 74])
         return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode() if ok else ""
     except Exception:
         return ""
@@ -107,6 +131,7 @@ def _cached_first_frame_preview(
     video_path_str: str,
     conf_threshold: float,
     active_violations_tuple: tuple[str, ...],
+    v_tag: int = 2,
 ):
     """
     Lưu cache kết quả nhận diện YOLOv8 của khung hình đầu tiên theo (video, độ nhạy, loại lỗi):
@@ -114,6 +139,7 @@ def _cached_first_frame_preview(
     """
     preview_tracker = MultiPersonTrackerAndDeduplicator()
     for _, frame in read_frames(video_path_str, frame_step=1, max_width=720):
+        frame = _normalize_scan_frame(frame)
         annotated_bgr, _, worker_cnt, env_info = smart_detect_and_annotate(
             frame,
             conf_threshold=conf_threshold,
@@ -161,6 +187,7 @@ def _build_monitor_frame_html(
     return clean_html(
         f"""
         <div class="sg-monitor-frame">
+            <div class="sg-monitor-blur-bg" style="background-image:url('{img_uri}');"></div>
             <img alt="Khung hình giám sát AI" src="{img_uri}" />
             <div class="sg-monitor-overlay top-left">{top_left_text}</div>
             <div class="sg-monitor-overlay top-right">{top_right_text}</div>
@@ -503,6 +530,7 @@ def render_scanner_page(raw_events: list):
                 human_cnt = 0
 
                 for frame_idx, frame in read_frames(video_path_str, frame_step=speed_step, max_width=720):
+                    frame = _normalize_scan_frame(frame)
                     annotated_bgr, new_viols, worker_cnt, env_info = smart_detect_and_annotate(
                         frame,
                         conf_threshold=ai_sensitivity,
@@ -611,6 +639,7 @@ def render_scanner_page(raw_events: list):
                     raw_bytes = np.asarray(bytearray(uploaded.getvalue()), dtype=np.uint8)
                     img_bgr = cv2.imdecode(raw_bytes, cv2.IMREAD_COLOR)
                     if img_bgr is not None:
+                        img_bgr = _normalize_scan_frame(img_bgr)
                         img_tracker = MultiPersonTrackerAndDeduplicator()
                         annotated_bgr, new_viols, worker_cnt, env_info = smart_detect_and_annotate(
                             img_bgr,

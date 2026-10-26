@@ -1010,15 +1010,42 @@ span.sg-card-dl-btn.disabled {
     width: 100% !important;
     overflow: hidden !important;
     border-radius: 10px !important;
-    background: #121A29 !important;
+    background: #0E1626 !important;
     border: 1px solid var(--border-strong) !important;
     margin-bottom: 2px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.sg-monitor-blur-bg {
+    position: absolute !important;
+    inset: -18px !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    filter: blur(22px) brightness(0.40) saturate(1.1) !important;
+    transform: scale(1.08) !important;
+    z-index: 0 !important;
+    pointer-events: none !important;
 }
 .sg-monitor-frame img {
+    position: relative !important;
+    z-index: 1 !important;
     width: 100% !important;
     height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
     display: block !important;
-    object-fit: cover !important;
+    object-fit: contain !important;
+    filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.45)) !important;
+}
+[data-testid="stMain"] .st-key-panel_review_detail [data-testid="stImage"] img {
+    max-height: 300px !important;
+    width: 100% !important;
+    object-fit: contain !important;
+    background: #0E1626 !important;
+    border-radius: 10px !important;
+    border: 1px solid var(--border) !important;
 }
 .sg-monitor-overlay {
     position: absolute !important;

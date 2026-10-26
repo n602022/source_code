@@ -1107,7 +1107,19 @@ def image_to_base64_uri(img_path: Path, max_width: int = 380):
         img = cv2.imread(key_str)
         if img is not None:
             h, w = img.shape[:2]
-            if max_width and w > max_width:
+            if max_width and h > w:
+                # Ảnh dọc (như Camera số 3): đặt trọn khung dọc vào giữa nền mờ 16:10 để thẻ sự kiện không bị cắt ngang đầu/chân
+                canvas_w = int(max_width)
+                canvas_h = max(1, int(round(canvas_w * 10 / 16)))
+                bg = cv2.resize(img, (canvas_w, canvas_h), interpolation=cv2.INTER_LINEAR)
+                bg = cv2.GaussianBlur(bg, (31, 31), 0)
+                bg = (bg.astype(np.float32) * 0.42).astype(np.uint8)
+                fg_w = max(1, min(canvas_w, int(round(w * (canvas_h / float(h))))))
+                fg = cv2.resize(img, (fg_w, canvas_h), interpolation=cv2.INTER_AREA)
+                x0 = (canvas_w - fg_w) // 2
+                bg[:, x0:x0 + fg_w] = fg
+                img = bg
+            elif max_width and w > max_width:
                 new_h = max(1, int(round(h * (max_width / float(w)))))
                 img = cv2.resize(img, (max_width, new_h), interpolation=cv2.INTER_AREA)
             ok, enc = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 82])
